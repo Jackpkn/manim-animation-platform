@@ -6,9 +6,6 @@ RUN apt-get update && apt-get install -y \
     libcairo2-dev \
     libpango1.0-dev \
     texlive-full \
-    build-essential \
-    python3-dev \
-    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Manim
@@ -16,9 +13,6 @@ RUN pip install manim
 
 # Working directory
 WORKDIR /app
-
-# Create media directory with proper permissions
-RUN mkdir -p /app/media/videos && chmod -R 777 /app/media
 
 # Copy execution script
 COPY execute_manim.py .

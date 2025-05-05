@@ -4,13 +4,13 @@ import json
 import subprocess
 from pathlib import Path
 
-def execute_manim_code(code_file, output_dir, quality="m"):
+def execute_manim_code(code_file, output_dir, quality="medium_quality"):
     """Execute a manim code file and return the generated video path"""
     try:
         cmd = [
             "python", "-m", "manim", 
             code_file,
-            "-q", quality,
+            f"--{quality}",
             "-o", output_dir
         ]
         
@@ -23,8 +23,8 @@ def execute_manim_code(code_file, output_dir, quality="m"):
                 "output": result.stdout
             }
         
-        # Find the generated video file in the media/videos directory
-        video_dir = Path("/app/media/videos")
+        # Find the generated video file (usually in media/videos/)
+        video_dir = Path(output_dir)
         video_files = list(video_dir.glob("**/*.mp4"))
         
         if not video_files:
@@ -34,12 +34,9 @@ def execute_manim_code(code_file, output_dir, quality="m"):
                 "output": result.stdout
             }
         
-        # Get the most recent video file
-        latest_video = max(video_files, key=lambda x: x.stat().st_mtime)
-        
         return {
             "success": True,
-            "video_path": str(latest_video),
+            "video_path": str(video_files[0]),
             "output": result.stdout
         }
     
@@ -61,7 +58,7 @@ if __name__ == "__main__":
     
     code_file = sys.argv[1]
     output_dir = sys.argv[2]
-    quality = sys.argv[3] if len(sys.argv) > 3 else "m"
+    quality = sys.argv[3] if len(sys.argv) > 3 else "medium_quality"
     
     result = execute_manim_code(code_file, output_dir, quality)
     print(json.dumps(result))

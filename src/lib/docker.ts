@@ -2,15 +2,11 @@ import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { exec } from 'child_process';
-import { promisify } from 'util';
 
 // Constants
 const TEMP_DIR = path.join(process.cwd(), "tmp");
 const OUTPUT_DIR = path.join(process.cwd(), "public/videos");
 const DOCKER_IMAGE = "manim-animation-platform";
-
-const execAsync = promisify(exec);
 
 // Make sure directories exist
 if (!fs.existsSync(TEMP_DIR)) {
@@ -24,11 +20,6 @@ if (!fs.existsSync(OUTPUT_DIR)) {
 interface CompileResult {
   success: boolean;
   videoPath?: string;
-  error?: string;
-}
-
-interface ExecResult {
-  videoUrl?: string;
   error?: string;
 }
 
@@ -69,7 +60,7 @@ export async function compileManimCode(
     // Build Docker image if it doesn't exist
     try {
       execSync(`docker image inspect ${DOCKER_IMAGE}`);
-    } catch {
+    } catch (error) {
       console.log("Building Docker image...");
       execSync(`docker build -t ${DOCKER_IMAGE} -f docker/Dockerfile docker/`);
     }
@@ -163,44 +154,6 @@ export async function combineVideos(
         error instanceof Error
           ? error.message
           : "Unknown error occurred while combining videos",
-    };
-  }
-}
-
-export async function execManimCode(filePath: string): Promise<ExecResult> {
-  try {
-    // Get the absolute path of the project root
-    const projectRoot = process.cwd();
-    
-    // Get the relative path from project root to the file
-    const relativePath = filePath.replace(projectRoot, '').replace(/^\//, '');
-    
-    // Get the scene name from the file path
-    const sceneName = path.basename(filePath, '.py');
-    
-    // Construct the Docker command with proper volume mounting
-    const command = `docker run --rm -v "${projectRoot}:/app" manim-platform python -m manim "${relativePath}" ${sceneName} -q m -o output`;
-
-    console.log('Executing command:', command);
-    
-    const { stdout, stderr } = await execAsync(command);
-    
-    if (stderr) {
-      console.error('Docker execution stderr:', stderr);
-    }
-    
-    if (stdout) {
-      console.log('Docker execution stdout:', stdout);
-    }
-
-    // Construct the video URL using the scene name
-    const videoUrl = `/api/video/${sceneName}`;
-
-    return { videoUrl };
-  } catch (err) {
-    console.error('Error executing Manim code:', err);
-    return {
-      error: err instanceof Error ? err.message : 'Failed to execute Manim code'
     };
   }
 }
