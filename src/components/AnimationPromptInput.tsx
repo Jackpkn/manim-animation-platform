@@ -61,11 +61,10 @@ export default function AnimationPromptInput({
                 whileTap={{ scale: 0.97 }}
                 type="submit"
                 disabled={isLoading || !prompt.trim()}
-                className={`px-8 py-3 rounded-xl font-medium flex items-center gap-2 ${
-                  isLoading || !prompt.trim()
+                className={`px-8 py-3 rounded-xl font-medium flex items-center gap-2 ${isLoading || !prompt.trim()
                     ? "bg-gray-700 text-gray-400 cursor-not-allowed"
                     : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
-                } transition-all duration-200`}
+                  } transition-all duration-200`}
               >
                 {isLoading ? (
                   <>
