@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Folder, File, ChevronRight, ChevronDown, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-// File system types (keep your existing types)
+// File system types
 export type FileType = {
   id: string;
   name: string;
@@ -29,6 +29,9 @@ interface FileExplorerProps {
   onFileSelect: (file: FileType) => void;
   selectedFileId: string | null;
 }
+
+// Python file icon component
+const PythonFileIcon = () => <img src="/python.svg" alt="python icon" />;
 
 export default function FileExplorer({
   fileSystem,
@@ -84,7 +87,12 @@ export default function FileExplorer({
     };
 
     const updatedFileSystem = updateItem(fileSystem);
-    setFilteredFileSystem(updatedFileSystem);
+    setFilteredFileSystem(updateItem(filteredFileSystem));
+  };
+
+  // Check if file is a Python file
+  const isPythonFile = (fileName: string) => {
+    return fileName.toLowerCase().endsWith(".py");
   };
 
   // File/Folder item component
@@ -101,7 +109,7 @@ export default function FileExplorer({
       <div>
         <div
           className={`flex items-center px-2 py-1 hover:bg-gray-700 rounded cursor-pointer ${
-            isSelected ? "bg-blue-800 hover:bg-blue-700" : ""
+            isSelected ? "bg-grey-100 hover:bg-blue-700" : ""
           }`}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
@@ -122,11 +130,14 @@ export default function FileExplorer({
             </>
           ) : (
             <>
-              <File size={16} className="ml-5 mr-2 text-gray-300" />
-              <span
-                className="flex-1"
-                onClick={() => item.type === "file" && onFileSelect(item)}
-              >
+              <div className="ml-5 mr-2">
+                {isPythonFile(item.name) ? (
+                  <PythonFileIcon />
+                ) : (
+                  <File size={16} className="text-gray-300" />
+                )}
+              </div>
+              <span className="flex-1" onClick={() => onFileSelect(item)}>
                 {item.name}
               </span>
             </>
