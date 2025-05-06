@@ -1,9 +1,9 @@
-import { Button } from "@/components/ui/button";
-import { PlayCircle } from "lucide-react";
 import React, { useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
-
+import { Button } from "@/components/ui/button";
+import { PlayCircle } from "lucide-react";
 import { editor } from "monaco-editor";
+
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
 });
@@ -25,16 +25,39 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
 
   const handleEditorDidMount = (
     editor: editor.IStandaloneCodeEditor,
-    monaco: typeof import("monaco-editor")
+    monacoInstance: typeof import("monaco-editor")
   ) => {
     editorRef.current = editor;
+
+    monacoInstance.editor.defineTheme("custom-dark", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [
+        { token: "identifier", foreground: "C5CCD6" },
+        { token: "identifier.function", foreground: "7EBFFF" },
+        { token: "type", foreground: "FFD68A" },
+        { token: "keyword", foreground: "D388FF" },
+        { token: "string", foreground: "A8D68A" },
+        { token: "comment", foreground: "767C88" },
+        { token: "number", foreground: "E5AA73" },
+      ],
+      colors: {
+        "editor.background": "#000000",
+        "editor.foreground": "#C5CCD6",
+        "editor.lineHighlightBackground": "#2F353F",
+        "editor.selectionBackground": "#404859",
+        "editorCursor.foreground": "#61A0FF",
+      },
+    });
+
+    monacoInstance.editor.setTheme("custom-dark");
   };
 
   useEffect(() => {
     if (editorRef.current) {
       editorRef.current.layout();
     }
-  }, []); // Empty dependency array means this runs once after initial render
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -45,12 +68,11 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
           Run Animation
         </Button>
       </div>
-
       <div className="relative rounded-md overflow-hidden border border-gray-300 dark:border-gray-600 flex-1">
         <MonacoEditor
           height="100%"
           language="python"
-          theme="vs-dark"
+          theme="custom-dark"
           value={code}
           onChange={(value) => {
             if (value !== undefined) {
