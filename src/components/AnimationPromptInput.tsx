@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
+import { useUser, useSignIn } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
-// Define the prop type for the onSubmit callback
 interface AnimationPromptInputProps {
   onSubmitAnimation: (prompt: string) => void;
   isLoading: boolean;
@@ -12,22 +13,34 @@ export default function AnimationPromptInput({
   isLoading,
 }: AnimationPromptInputProps) {
   const [prompt, setPrompt] = useState("");
+  const { isSignedIn } = useUser();
+  const { signIn } = useSignIn();
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (prompt.trim()) {
-      onSubmitAnimation(prompt.trim()); // Call the parent's handler
+    if (!prompt.trim()) return;
+
+    if (!isSignedIn) {
+      // Redirect to sign in with redirect back to current page after auth
+      await signIn?.create({
+        strategy: "oauth_google",
+        redirectUrl: window.location.href,
+      });
+      return;
     }
+
+    // Additional check in case the middleware didn't catch it
+    if (!isSignedIn) {
+      router.push("/projects");
+      return;
+    }
+
+    onSubmitAnimation(prompt.trim());
   };
 
   return (
-    <motion.div
-      // Note: The initial/animate/variants/transition would typically
-      // be handled by the parent (HeroSection) or passed as props.
-      // For simplicity here, we'll assume HeroSection wraps this
-      // and handles the primary animation for the whole block.
-      className="max-w-3xl mx-auto mb-20"
-    >
+    <motion.div className="max-w-3xl mx-auto mb-20">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="relative">
           <div className="relative">
@@ -36,13 +49,10 @@ export default function AnimationPromptInput({
               className="w-full py-6 px-6 bg-gray-900/90 backdrop-blur-xl text-white rounded-2xl border border-white/10 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition duration-200 placeholder-gray-500 resize-none h-28 md:h-36"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              style={{
-                lineHeight: "1.6rem",
-              }}
+              style={{ lineHeight: "1.6rem" }}
             />
             <div className="mt-4 flex justify-between items-center">
               <div className="flex items-center gap-2 text-sm text-gray-400">
-                {/* Use the SVG from public */}
                 <img src="/ai.svg" alt="AI Icon" className="w-5 h-5" />
                 <span>AI will generate code for you</span>
               </div>
@@ -59,7 +69,6 @@ export default function AnimationPromptInput({
               >
                 {isLoading ? (
                   <>
-                    {/* Use the SVG from public */}
                     <img
                       src="/loading.svg"
                       alt="Loading"
@@ -69,8 +78,9 @@ export default function AnimationPromptInput({
                   </>
                 ) : (
                   <>
-                    <span>Create Animation</span>
-                    {/* Use the SVG from public */}
+                    <span>
+                      {isSignedIn ? "Create Animation" : "Sign in to Create"}
+                    </span>
                     <img
                       src="/forward-arrow.svg"
                       alt="Arrow"
