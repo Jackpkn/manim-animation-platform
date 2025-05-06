@@ -42,7 +42,7 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
         { token: "number", foreground: "E5AA73" },
       ],
       colors: {
-        "editor.background": "#000000",
+        "editor.background": "#101828",
         "editor.foreground": "#C5CCD6",
         "editor.lineHighlightBackground": "#2F353F",
         "editor.selectionBackground": "#404859",
@@ -72,7 +72,6 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
         <MonacoEditor
           height="100%"
           language="python"
-          theme="custom-dark"
           value={code}
           onChange={(value) => {
             if (value !== undefined) {
