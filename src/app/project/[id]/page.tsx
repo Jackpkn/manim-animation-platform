@@ -10,9 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import AIChatSection from "@/components/project/AIChatSection";
 import AnimationPreviewSection from "@/components/project/AnimationPreviewSection";
-import CodeEditorSection from "@/components/project/CodeEditorSection";
 import ProjectHeader from "@/components/project/ProjectHeader";
 import { useProject } from "@/lib/project-hook";
+import IDE from "@/components/project/IDE";
 
 export default function ProjectPage({ params }: { params: { id: string } }) {
   const {
@@ -66,9 +66,9 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
               </div>
 
               <TabsContent value="code" className="flex-1 p-6 overflow-auto">
-                <CodeEditorSection
+                <IDE
                   code={code}
-                  onCodeChange={(value) => setCode(value)}
+                  onCodeChange={setCode}
                   onRunAnimation={handleRunAnimation}
                   isExecuting={isExecuting}
                 />
