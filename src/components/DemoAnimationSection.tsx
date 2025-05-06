@@ -14,7 +14,7 @@ const DemoAnimationSection = ({
         hidden: { opacity: 0, scale: 0.8 },
       }}
       transition={{ duration: 0.7, delay: 0.3 }}
-      className="relative max-w-7xl mx-auto md:h-[600px] mb-12 rounded-xl overflow-hidden"
+      className="relative max-w-7xl mx-auto h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] mb-12 rounded-xl overflow-hidden"
     >
       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl border border-white/10">
         <div className="absolute inset-0 flex items-center justify-center">
