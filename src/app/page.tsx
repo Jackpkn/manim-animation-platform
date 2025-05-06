@@ -1,106 +1,79 @@
-'use client';
+"use client";
 
 import { useState } from "react";
-import CodeEditor from "@/components/CodeEditor";
-import Preview from "@/components/Preview";
+import { useRouter } from "next/navigation";
+import { v4 as uuidv4 } from "uuid";
 
 export default function Home() {
-  const [videoUrl, setVideoUrl] = useState<string>();
-  const [isExecuting, setIsExecuting] = useState(false);
-  const [error, setError] = useState<string>();
+  const router = useRouter();
+  const [prompt, setPrompt] = useState("");
 
-  const handleRunAnimation = async (code: string) => {
-    setIsExecuting(true);
-    setError(undefined);
-
-    try {
-      // Save the code to a temporary file
-      const response = await fetch('/api/execute', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code }),
-      });
-
-      const data = await response.json();
-
-      if (data.error) {
-        setError(data.error);
-      } else if (data.videoUrl) {
-        setVideoUrl(data.videoUrl);
-      }
-    } catch (error) {
-      setError('Failed to execute animation');
-      console.error('Error executing animation:', error);
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
-  const handleSaveCode = (code: string) => {
-    // TODO: Implement code saving
-    console.log("Saving code:", code);
-  };
-
-  const handleDownload = () => {
-    if (videoUrl) {
-      window.open(videoUrl, '_blank');
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (prompt.trim()) {
+      const projectId = uuidv4();
+      router.push(`/project/${projectId}`);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="max-w-2xl w-full mx-auto px-4">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
             Manim Animation Platform
           </h1>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <CodeEditor onRun={handleRunAnimation} onSave={handleSaveCode} />
-          <Preview
-            videoUrl={videoUrl}
-            onDownload={handleDownload}
-            isExecuting={isExecuting}
-            error={error}
-          />
+          <p className="text-lg text-gray-600 dark:text-gray-400">
+            Create beautiful mathematical animations with AI assistance
+          </p>
         </div>
 
-        {/* Examples Section */}
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Example Animations
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              "Basic Shapes",
-              "Text Animation",
-              "Transformations",
-              "Mathematical Graphs",
-              "3D Objects",
-              "Custom Animations"
-            ].map((example, index) => (
-              <div
-                key={index}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 hover:shadow-md transition-shadow cursor-pointer"
-              >
-                <h3 className="font-medium text-gray-900 dark:text-white">
-                  {example}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Click to load example
-                </p>
-              </div>
-            ))}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="relative">
+            <textarea
+              placeholder="Describe your app idea..."
+              className="w-full py-3 px-5 h-24 md:h-30 border-gray border-[1px] bg-[#30302e] text-white rounded-xl 
+                        focus:outline-none focus:ring-0  
+                        transition-shadow duration-200 ease-in-out placeholder-gray-400 
+                        resize-none leading-relaxed"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              style={{
+                // paddingRight: "7rem",
+                textAlign: "left",
+                lineHeight: "1.5rem",
+              }}
+              rows={3}
+            />
+
+            <button
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+            >
+              Create
+            </button>
+          </div>
+        </form>
+
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              AI-Powered
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              Get help from our AI assistant to create complex animations
+            </p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Real-time Preview
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              See your animations come to life instantly
+            </p>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
