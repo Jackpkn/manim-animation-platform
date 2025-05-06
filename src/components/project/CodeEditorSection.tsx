@@ -1,8 +1,12 @@
-// components/project/CodeEditorSection.tsx
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { PlayCircle } from "lucide-react";
-import React from "react"; // Import React
+import React, { useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
+
+import { editor } from "monaco-editor";
+const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
+  ssr: false,
+});
 
 interface CodeEditorSectionProps {
   code: string;
@@ -17,6 +21,21 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
   onRunAnimation,
   isExecuting,
 }: CodeEditorSectionProps) {
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+
+  const handleEditorDidMount = (
+    editor: editor.IStandaloneCodeEditor,
+    monaco: typeof import("monaco-editor")
+  ) => {
+    editorRef.current = editor;
+  };
+
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.layout();
+    }
+  }, []); // Empty dependency array means this runs once after initial render
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-4">
@@ -28,13 +47,26 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
       </div>
 
       <div className="relative rounded-md overflow-hidden border border-gray-300 dark:border-gray-600 flex-1">
-        {" "}
-        {/* Use flex-1 to fill space */}
-        <Textarea
+        <MonacoEditor
+          height="100%"
+          language="python"
+          theme="vs-dark"
           value={code}
-          onChange={(e) => onCodeChange(e.target.value)}
-          className="w-full h-full p-4 font-mono text-sm bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" // Use resize-none as container handles resize
-          placeholder="Write your Manim code here..."
+          onChange={(value) => {
+            if (value !== undefined) {
+              onCodeChange(value);
+            }
+          }}
+          onMount={handleEditorDidMount}
+          options={{
+            minimap: { enabled: false },
+            scrollBeyondLastLine: false,
+            fontSize: 14,
+            fontFamily: "monospace",
+            lineNumbers: "on",
+            tabSize: 4,
+            automaticLayout: true,
+          }}
         />
       </div>
     </div>
