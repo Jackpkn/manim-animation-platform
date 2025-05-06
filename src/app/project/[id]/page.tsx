@@ -7,9 +7,11 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Send, PlayCircle, Save, Download } from "lucide-react";
+
+import AIChatSection from "@/components/project/AIChatSection";
+import AnimationPreviewSection from "@/components/project/AnimationPreviewSection";
+import CodeEditorSection from "@/components/project/CodeEditorSection";
+import ProjectHeader from "@/components/project/ProjectHeader";
 
 export default function ProjectPage({ params }: { params: { id: string } }) {
   const [videoUrl, setVideoUrl] = useState<string>();
@@ -141,81 +143,18 @@ class MyAnimation(Scene):
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Animation Project: {params.id}
-          </h1>
-          <div className="flex space-x-2">
-            <Button variant="outline" onClick={handleSaveCode}>
-              <Save className="mr-2 h-4 w-4" />
-              Save Project
-            </Button>
-          </div>
-        </div>
-      </header>
+      <ProjectHeader projectId={params.id} onSave={handleSaveCode} />
 
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel defaultSize={40} minSize={30}>
-            <div className="h-full flex flex-col">
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
-                  {conversation.map((message, index) => (
-                    <div
-                      key={index}
-                      className={`p-4 rounded-lg ${
-                        message.role === "assistant"
-                          ? "bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
-                      }`}
-                    >
-                      <p>{message.content}</p>
-                    </div>
-                  ))}
-                  {isGenerating && (
-                    <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
-                      <div className="flex items-center space-x-2">
-                        <div className="h-2 w-2 bg-blue-600 rounded-full animate-pulse"></div>
-                        <div className="h-2 w-2 bg-blue-600 rounded-full animate-pulse delay-150"></div>
-                        <div className="h-2 w-2 bg-blue-600 rounded-full animate-pulse delay-300"></div>
-                        <span className="text-blue-600 dark:text-blue-400">
-                          Generating response...
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex space-x-2">
-                  <Textarea
-                    placeholder="Describe what animation you want to create..."
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    className="min-h-[80px] resize-none"
-                    onKeyDown={(e) => {
-                      if (
-                        e.key === "Enter" &&
-                        e.shiftKey === false &&
-                        prompt.trim()
-                      ) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!prompt.trim() || isGenerating}
-                    className="self-end"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <AIChatSection
+              conversation={conversation}
+              isGenerating={isGenerating}
+              prompt={prompt}
+              onPromptChange={(value: string) => setPrompt(value)}
+              onSendMessage={handleSendMessage}
+            />
           </ResizablePanel>
 
           <ResizableHandle />
@@ -234,69 +173,21 @@ class MyAnimation(Scene):
               </div>
 
               <TabsContent value="code" className="flex-1 p-6 overflow-auto">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">Code Editor</h2>
-                  <Button onClick={handleRunAnimation} disabled={isExecuting}>
-                    <PlayCircle className="mr-2 h-4 w-4" />
-                    Run Animation
-                  </Button>
-                </div>
-
-                <div className="relative rounded-md overflow-hidden border border-gray-300 dark:border-gray-600">
-                  <Textarea
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    className="w-full h-[600px] p-4 font-mono text-sm bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Write your Manim code here..."
-                  />
-                </div>
+                <CodeEditorSection
+                  code={code}
+                  onCodeChange={(value) => setCode(value)}
+                  onRunAnimation={handleRunAnimation}
+                  isExecuting={isExecuting}
+                />
               </TabsContent>
 
               <TabsContent value="preview" className="flex-1 p-6 overflow-auto">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">Animation Preview</h2>
-                  <Button
-                    variant="outline"
-                    onClick={handleDownload}
-                    disabled={!videoUrl || isExecuting}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Download
-                  </Button>
-                </div>
-
-                <div className="aspect-video bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 flex items-center justify-center">
-                  {isExecuting ? (
-                    <div className="flex flex-col items-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-                      <p className="text-gray-500 dark:text-gray-400">
-                        Generating animation...
-                      </p>
-                    </div>
-                  ) : error ? (
-                    <div className="p-4 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-md max-w-lg">
-                      <p className="font-semibold mb-2">Error</p>
-                      <p className="font-mono text-sm whitespace-pre-wrap">
-                        {error}
-                      </p>
-                    </div>
-                  ) : videoUrl ? (
-                    <video
-                      src={videoUrl}
-                      controls
-                      className="w-full h-full rounded-md"
-                    />
-                  ) : (
-                    <div className="text-center p-6">
-                      <p className="text-gray-500 dark:text-gray-400 mb-2">
-                        No animation yet
-                      </p>
-                      <p className="text-gray-400 dark:text-gray-500 text-sm">
-                        Run your code to see the preview here
-                      </p>
-                    </div>
-                  )}
-                </div>
+                <AnimationPreviewSection
+                  isExecuting={isExecuting}
+                  onDownload={handleDownload}
+                  videoUrl={videoUrl}
+                  error={error}
+                />
               </TabsContent>
             </Tabs>
           </ResizablePanel>
