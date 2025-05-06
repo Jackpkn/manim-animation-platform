@@ -13,7 +13,7 @@ export default function Header() {
               className="w-full h-full p-1" // Added padding for better fit
             />
           </div>
-          <span className="font-semibold text-xl">Manim</span>
+          <span className="font-semibold text-xl">PromptViz</span>
         </div>
         <nav className="hidden md:flex items-center gap-8">
           <a

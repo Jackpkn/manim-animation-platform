@@ -38,7 +38,7 @@ export default function HeroSection({
           </div>
           <h1 className="text-5xl md:text-7xl font-bold mb-6">
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
-              Manim Animation
+              PromptViz Animation
             </span>
             <br />
             <span className="text-white">Platform</span>
