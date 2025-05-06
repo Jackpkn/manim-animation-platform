@@ -13,17 +13,22 @@ const ProjectHeader = React.memo(function ProjectHeader({
   onSave,
 }: ProjectHeaderProps) {
   return (
-    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Animation Project: {projectId}
-        </h1>
-        <div className="flex space-x-2">
-          <Button variant="outline" onClick={onSave}>
-            <Save className="mr-2 h-4 w-4" />
-            Save Project
-          </Button>
+    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between">
+      <div className="flex gap-2">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+          <img src="/logo.svg" alt="Manim Logo" className="w-full h-full p-1" />
         </div>
+        <span className="font-semibold text-xl">PromptViz</span>
+      </div>
+
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+        Animation Project: {projectId}
+      </h1>
+      <div className="flex space-x-2">
+        <Button variant="outline" onClick={onSave}>
+          <Save className="mr-2 h-4 w-4" />
+          Save Project
+        </Button>
       </div>
     </header>
   );
