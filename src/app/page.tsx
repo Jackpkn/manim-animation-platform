@@ -10,6 +10,7 @@ import BackgroundOrbs from "@/components/BackgroundOrbs";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import DemoAnimationSection from "@/components/DemoAnimationSection";
+import FeatureSection from "@/components/FeatureSection";
 
 export default function Home() {
   const router = useRouter();
@@ -56,6 +57,8 @@ export default function Home() {
 
         {/* Demo animation */}
         <DemoAnimationSection controls={controls} />
+
+        <FeatureSection />
       </div>
     </div>
   );
