@@ -11,6 +11,7 @@ import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import DemoAnimationSection from "@/components/DemoAnimationSection";
 import FeatureSection from "@/components/FeatureSection";
+import ExamplesSection from "@/components/ExamplesSection";
 
 export default function Home() {
   const router = useRouter();
@@ -59,6 +60,8 @@ export default function Home() {
         <DemoAnimationSection controls={controls} />
 
         <FeatureSection />
+        {/* Example section  */}
+        <ExamplesSection />
       </div>
     </div>
   );
