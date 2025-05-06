@@ -2,6 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
 import React from "react"; // Import React
+import { UserButton } from "@clerk/nextjs";
 
 interface ProjectHeaderProps {
   projectId: string;
@@ -24,11 +25,12 @@ const ProjectHeader = React.memo(function ProjectHeader({
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
         Animation Project: {projectId}
       </h1>
-      <div className="flex space-x-2">
+      <div className="flex space-x-2 items-center">
         <Button variant="outline" onClick={onSave}>
           <Save className="mr-2 h-4 w-4" />
           Save Project
         </Button>
+        <UserButton afterSignOutUrl="/" />
       </div>
     </header>
   );
