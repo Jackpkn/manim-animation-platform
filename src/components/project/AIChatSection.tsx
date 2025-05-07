@@ -1,12 +1,13 @@
 // components/project/AIChatSection.tsx
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Send } from "lucide-react";
-import React from "react"; // Import React
+import { Send, Code, Copy } from "lucide-react";
+import React from "react";
 
 interface Message {
   role: string;
   content: string;
+  code?: string; // Added code property
 }
 
 interface AIChatSectionProps {
@@ -15,6 +16,7 @@ interface AIChatSectionProps {
   prompt: string;
   onPromptChange: (prompt: string) => void;
   onSendMessage: () => void;
+  onUseCode?: (code: string) => void; // Optional callback to use code
 }
 
 const AIChatSection = React.memo(function AIChatSection({
@@ -23,16 +25,17 @@ const AIChatSection = React.memo(function AIChatSection({
   prompt,
   onPromptChange,
   onSendMessage,
+  onUseCode,
 }: AIChatSectionProps) {
-  // We keep the prompt state management within this component
-  // as it's primarily related to the input UI here.
-  // The parent component will handle the API call and updating the conversation.
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && e.shiftKey === false && prompt.trim()) {
       e.preventDefault();
       onSendMessage();
     }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
   };
 
   return (
@@ -48,7 +51,40 @@ const AIChatSection = React.memo(function AIChatSection({
                   : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
               }`}
             >
-              <p>{message.content}</p>
+              <p className="whitespace-pre-wrap">{message.content}</p>
+
+              {message.code && (
+                <div className="mt-4 p-4 bg-gray-900 rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs text-gray-400 flex items-center">
+                      <Code size={12} className="mr-1" /> Python
+                    </span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(message.code || "")}
+                        className="h-6 px-2 text-xs"
+                      >
+                        <Copy size={12} className="mr-1" /> Copy
+                      </Button>
+                      {onUseCode && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => onUseCode(message.code || "")}
+                          className="h-6 px-2 text-xs"
+                        >
+                          Use Code
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <pre className="text-sm text-gray-300 overflow-x-auto max-h-60">
+                    <code>{message.code}</code>
+                  </pre>
+                </div>
+              )}
             </div>
           ))}
           {isGenerating && (
