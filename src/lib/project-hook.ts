@@ -35,7 +35,7 @@ class MyAnimation(Scene):
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [conversation, setConversation] = useState<
-    { role: string; content: string }[]
+    { role: string; content: string; code?: string }[]
   >([
     {
       role: "assistant",
@@ -115,7 +115,8 @@ class MyAnimation(Scene):
           newMessage,
           {
             role: "assistant",
-            content: `I've created the code for your animation. You can see it in the code tab and run it to preview the result.`,
+            content: data.explanation || "Here's the animation you requested.",
+            code: data.code,
           },
         ]);
       } else {
