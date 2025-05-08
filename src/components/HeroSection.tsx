@@ -1,28 +1,34 @@
-// src/components/HeroSection.tsx
-import React from "react";
-import { motion, AnimationControls } from "framer-motion";
+import React, { RefObject, useEffect } from "react";
+import { motion, useAnimation } from "framer-motion";
 import AnimationPromptInput from "./AnimationPromptInput";
 
 interface HeroSectionProps {
-  heroRef: React.RefObject<HTMLElement>;
-  animationControls: AnimationControls;
-  onSubmitAnimation: (prompt: string) => void;
+  heroRef: RefObject<HTMLElement | null>;
+  onSubmitAnimation: (prompt: string) => Promise<void>;
   isSubmitLoading: boolean;
 }
 
 export default function HeroSection({
   heroRef,
-  animationControls,
   onSubmitAnimation,
   isSubmitLoading,
 }: HeroSectionProps) {
+  const animationControls = useAnimation();
+
+  useEffect(() => {
+    animationControls.start("visible");
+  }, [animationControls]);
+
   const textVariants = {
     visible: { opacity: 1, y: 0 },
     hidden: { opacity: 0, y: 30 },
   };
 
   return (
-    <section ref={heroRef} className="pt-32 pb-16 md:pt-40 md:pb-24 px-4">
+    <section
+      ref={heroRef}
+      className="relative pt-32 pb-16 md:pt-40 md:pb-24 px-4 z-20"
+    >
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial="hidden"
@@ -52,16 +58,15 @@ export default function HeroSection({
 
         {/* Input area */}
         <motion.div
-          // This motion div wraps the input component and handles its animation
           initial="hidden"
           animate={animationControls}
-          variants={textVariants} // Re-use the same variants
+          variants={textVariants}
           transition={{ duration: 0.7, delay: 0.6 }}
           className="max-w-3xl mx-auto mb-20"
         >
           <AnimationPromptInput
-            onSubmitAnimation={onSubmitAnimation}
             isLoading={isSubmitLoading}
+            onSubmitAnimation={onSubmitAnimation}
           />
         </motion.div>
       </div>
