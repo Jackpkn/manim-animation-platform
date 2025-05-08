@@ -4,7 +4,7 @@ import { useUser, useSignIn } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 
 interface AnimationPromptInputProps {
-  onSubmitAnimation: (prompt: string) => void;
+  onSubmitAnimation: (prompt: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -19,24 +19,20 @@ export default function AnimationPromptInput({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim()) return;
+    if (!prompt.trim() || isLoading) return;
 
     if (!isSignedIn) {
-      // Redirect to sign in with redirect back to current page after auth
-      await signIn?.create({
-        strategy: "oauth_google",
-        redirectUrl: window.location.href,
-      });
+      try {
+        await signIn?.create({
+          strategy: "oauth_google",
+          redirectUrl: window.location.href,
+        });
+      } catch (error) {
+        console.error("Clerk sign-in failed:", error);
+      }
       return;
     }
-
-    // Additional check in case the middleware didn't catch it
-    if (!isSignedIn) {
-      router.push("/projects");
-      return;
-    }
-
-    onSubmitAnimation(prompt.trim());
+    await onSubmitAnimation(prompt.trim());
   };
 
   return (
@@ -50,6 +46,7 @@ export default function AnimationPromptInput({
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               style={{ lineHeight: "1.6rem" }}
+              disabled={isLoading}
             />
             <div className="mt-4 flex justify-between items-center">
               <div className="flex items-center gap-2 text-sm text-gray-400">
@@ -57,14 +54,15 @@ export default function AnimationPromptInput({
                 <span>AI will generate code for you</span>
               </div>
               <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: !isLoading && prompt.trim() ? 1.03 : 1 }}
+                whileTap={{ scale: !isLoading && prompt.trim() ? 0.97 : 1 }}
                 type="submit"
                 disabled={isLoading || !prompt.trim()}
-                className={`px-8 py-3 rounded-xl font-medium flex items-center gap-2 ${isLoading || !prompt.trim()
+                className={`px-8 py-3 rounded-xl font-medium flex items-center gap-2 ${
+                  isLoading || !prompt.trim()
                     ? "bg-gray-700 text-gray-400 cursor-not-allowed"
                     : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
-                  } transition-all duration-200`}
+                } transition-all duration-200`}
               >
                 {isLoading ? (
                   <>
