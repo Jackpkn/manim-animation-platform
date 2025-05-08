@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -15,6 +17,9 @@ import { useProject } from "@/lib/project-hook";
 import IDE from "@/components/project/IDE";
 
 export default function ProjectPage({ params }: { params: { id: string } }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const {
     videoUrl,
     isExecuting,
@@ -33,6 +38,32 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     handleDownload,
     handleSendMessage,
   } = useProject(params);
+  const initialPrompt = searchParams.get("initialPrompt");
+  const initialPromptProcessed = useRef(false);
+  useEffect(() => {
+    if (
+      initialPrompt &&
+      !initialPromptProcessed.current &&
+      !isGenerating &&
+      conversation.length <= 1
+    ) {
+      console.log(
+        "ProjectPage: Processing initial prompt from URL:",
+        initialPrompt
+      );
+      initialPromptProcessed.current = true;
+      handleSendMessage(initialPrompt);
+      const currentPathWithoutQuery = `/project/${params.id}`;
+      router.replace(currentPathWithoutQuery);
+    }
+  }, [
+    initialPrompt,
+    handleSendMessage,
+    isGenerating,
+    conversation.length,
+    params.id,
+    router,
+  ]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
@@ -46,7 +77,7 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
               isGenerating={isGenerating}
               prompt={prompt}
               onPromptChange={(value: string) => setPrompt(value)}
-              onSendMessage={handleSendMessage}
+              onSendMessage={() => handleSendMessage()}
             />
           </ResizablePanel>
 
