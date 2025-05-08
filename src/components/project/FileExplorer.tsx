@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Folder, File, ChevronRight, ChevronDown, Search } from "lucide-react";
+import {
+  Folder,
+  File,
+  ChevronRight,
+  ChevronDown,
+  Search,
+  Plus,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 // File system types
 export type FileType = {
@@ -15,7 +23,7 @@ export type FolderType = {
   name: string;
   type: "folder";
   isOpen: boolean;
-  children: (FileType | FolderType)[];
+  children: FileSystemItem[];
 };
 
 export type FileSystemItem = FileType | FolderType;
@@ -28,19 +36,26 @@ interface FileExplorerProps {
   fileSystem: FileSystemItem[];
   onFileSelect: (file: FileType) => void;
   selectedFileId: string | null;
+  onAddScene?: (name: string) => void;
+  setFileSystem: React.Dispatch<React.SetStateAction<FileSystemItem[]>>;
 }
 
-// Python file icon component
-const PythonFileIcon = () => <img src="/python.svg" alt="python icon" />;
+const PythonFileIcon = () => (
+  <img src="/python.svg" alt="python icon" className="w-4 h-4" />
+);
 
 export default function FileExplorer({
   fileSystem,
   onFileSelect,
   selectedFileId,
+  onAddScene,
+  setFileSystem,
 }: FileExplorerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredFileSystem, setFilteredFileSystem] =
     useState<FileSystemItem[]>(fileSystem);
+  const [isAddingScene, setIsAddingScene] = useState(false);
+  const [newSceneName, setNewSceneName] = useState("");
 
   // Filter files based on search query
   useEffect(() => {
@@ -73,6 +88,22 @@ export default function FileExplorer({
     setFilteredFileSystem(filterItems(fileSystem));
   }, [searchQuery, fileSystem]);
 
+  // Find file by ID in the file system
+  const findFileById = (
+    id: string,
+    items: FileSystemItem[]
+  ): FileType | null => {
+    for (const item of items) {
+      if (item.type === "file" && item.id === id) {
+        return item;
+      } else if (isFolder(item)) {
+        const foundInFolder = findFileById(id, item.children);
+        if (foundInFolder) return foundInFolder;
+      }
+    }
+    return null;
+  };
+
   // Toggle folder open/closed state
   const toggleFolder = (folderId: string) => {
     const updateItem = (items: FileSystemItem[]): FileSystemItem[] => {
@@ -87,15 +118,66 @@ export default function FileExplorer({
     };
 
     const updatedFileSystem = updateItem(fileSystem);
+    setFileSystem(updatedFileSystem);
     setFilteredFileSystem(updateItem(filteredFileSystem));
   };
 
-  // Check if file is a Python file
+  const handleAddScene = () => {
+    if (!newSceneName.trim()) return;
+
+    const sceneName = newSceneName.endsWith(".py")
+      ? newSceneName.slice(0, -3)
+      : newSceneName;
+
+    const className = sceneName
+      .split(/[_\s]+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join("");
+
+    const newFile: FileType = {
+      id: `file-${Date.now()}`,
+      name: `${sceneName}.py`,
+      content: `from manim import *\n\nclass ${className}(Scene):\n    def construct(self):\n        circle = Circle()\n        self.play(Create(circle))`,
+      type: "file",
+    };
+
+    // Find or create a scenes folder
+    let scenesFolder = fileSystem.find(
+      (item) => isFolder(item) && item.name === "scenes"
+    ) as FolderType | undefined;
+
+    if (!scenesFolder) {
+      scenesFolder = {
+        id: `folder-${Date.now()}`,
+        name: "scenes",
+        type: "folder",
+        isOpen: true,
+        children: [],
+      };
+      setFileSystem((prev) => [...prev, scenesFolder!]);
+    }
+
+    // Update the scenes folder with new file
+    const updatedFileSystem = fileSystem.map((item) => {
+      if (isFolder(item) && item.id === scenesFolder?.id) {
+        return {
+          ...item,
+          children: [...item.children, newFile],
+        };
+      }
+      return item;
+    });
+
+    setFileSystem(updatedFileSystem);
+    onFileSelect(newFile);
+    setIsAddingScene(false);
+    setNewSceneName("");
+  };
+
   const isPythonFile = (fileName: string) => {
     return fileName.toLowerCase().endsWith(".py");
   };
 
-  // File/Folder item component
   const FileSystemItemComponent = ({
     item,
     depth = 0,
@@ -109,14 +191,18 @@ export default function FileExplorer({
       <div>
         <div
           className={`flex items-center px-2 py-1 hover:bg-gray-700 rounded cursor-pointer ${
-            isSelected ? "bg-grey-100 hover:bg-blue-700" : ""
+            isSelected ? "bg-blue-950 hover:bg-blue-700" : ""
           }`}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
+          onClick={() => !isFolder(item) && onFileSelect(item)}
         >
           {isFolder(item) ? (
             <>
               <button
-                onClick={() => toggleFolder(item.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFolder(item.id);
+                }}
                 className="mr-1 p-0.5 hover:bg-gray-600 rounded"
               >
                 {item.isOpen ? (
@@ -137,9 +223,7 @@ export default function FileExplorer({
                   <File size={16} className="text-gray-300" />
                 )}
               </div>
-              <span className="flex-1" onClick={() => onFileSelect(item)}>
-                {item.name}
-              </span>
+              <span className="flex-1">{item.name}</span>
             </>
           )}
         </div>
@@ -162,7 +246,37 @@ export default function FileExplorer({
   return (
     <div className="h-full flex flex-col bg-gray-900 text-white border-r border-gray-700 w-64">
       <div className="p-2 border-b border-gray-700">
-        <h2 className="font-semibold mb-2">EXPLORER</h2>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="font-semibold">EXPLORER</h2>
+          {onAddScene && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-1 h-6 w-6 text-gray-400 hover:text-white"
+              onClick={() => setIsAddingScene(true)}
+              title="Add new scene"
+            >
+              <Plus size={16} />
+            </Button>
+          )}
+        </div>
+
+        {isAddingScene && (
+          <div className="flex gap-2 mb-2">
+            <Input
+              autoFocus
+              placeholder="Scene name"
+              className="bg-gray-800 border-gray-700"
+              value={newSceneName}
+              onChange={(e) => setNewSceneName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddScene()}
+            />
+            <Button size="sm" onClick={handleAddScene}>
+              Add
+            </Button>
+          </div>
+        )}
+
         <div className="relative">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
           <Input
