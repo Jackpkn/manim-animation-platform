@@ -1,8 +1,9 @@
 // components/project/AIChatSection.tsx
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Send, Code, Copy } from "lucide-react";
+import { ArrowUp, Code, Copy } from "lucide-react";
 import React from "react";
+import { Card } from "../ui/card";
 
 interface Message {
   role: string;
@@ -43,11 +44,13 @@ const AIChatSection = React.memo(function AIChatSection({
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-4">
           {conversation.map((message, index) => (
-            <div
+            <Card
               key={index}
-              className={`p-4 rounded-lg ${
+              className={`p-4 rounded-lg shadow-sm relative ${
                 message.role === "assistant"
-                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200"
+                  ? `${
+                      isGenerating ? "gradient-border" : ""
+                    } bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200`
                   : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
               }`}
             >
@@ -85,14 +88,13 @@ const AIChatSection = React.memo(function AIChatSection({
                   </pre>
                 </div>
               )}
-            </div>
+            </Card>
           ))}
+          {/* Generating message bubble */}
           {isGenerating && (
-            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+            // Add the gradient-border class here
+            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 relative gradient-border">
               <div className="flex items-center space-x-2">
-                <div className="h-2 w-2 bg-blue-600 rounded-full animate-pulse"></div>
-                <div className="h-2 w-2 bg-blue-600 rounded-full animate-pulse delay-150"></div>
-                <div className="h-2 w-2 bg-blue-600 rounded-full animate-pulse delay-300"></div>
                 <span className="text-blue-600 dark:text-blue-400">
                   Generating response...
                 </span>
@@ -102,24 +104,111 @@ const AIChatSection = React.memo(function AIChatSection({
         </div>
       </div>
 
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex space-x-2">
-          <Textarea
-            placeholder="Describe what animation you want to create..."
-            value={prompt}
-            onChange={(e) => onPromptChange(e.target.value)}
-            className="min-h-[80px] resize-none"
-            onKeyDown={handleKeyDown}
-          />
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        <div className="flex space-x-3 items-end">
+          {/* Wrapper div for Textarea - add the conditional class here */}
+          <div
+            className={`relative flex-1 ${
+              isGenerating ? "gradient-border-textarea-wrapper" : ""
+            }`}
+          >
+            <Textarea
+              placeholder="Describe what animation you want to create..."
+              value={prompt}
+              onChange={(e) => onPromptChange(e.target.value)}
+              // Keep necessary Tailwind classes
+              className="min-h-[80px] resize-none rounded-xl focus:ring-2 focus:ring-blue-400 w-full relative z-[1] bg-gray-50 dark:bg-gray-900"
+              onKeyDown={handleKeyDown}
+            />
+          </div>
           <Button
             onClick={onSendMessage}
             disabled={!prompt.trim() || isGenerating}
-            className="self-end"
+            className="self-end h-10 w-10 rounded-full p-0 bg-blue-600 hover:bg-blue-700 transition-colors"
           >
-            <Send className="h-4 w-4" />
+            <ArrowUp className="h-5 w-5" />
           </Button>
         </div>
       </div>
+
+      {/* === Consolidated styled-jsx block === */}
+      <style jsx>{`
+        /* Animation for the message bubble border */
+        @keyframes gradientMove {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+        /* Style for the generating message bubble border */
+        .gradient-border::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          border-radius: 0.5rem; /* Matches rounded-lg */
+          padding: 1px; /* Border thickness */
+          background: linear-gradient(
+            90deg,
+            #3b82f6,
+            /* blue-500 */ #8b5cf6,
+            /* violet-500 */ #ec4899,
+            /* pink-500 */ #3b82f6
+          );
+          background-size: 300% 300%;
+          animation: gradientMove 2s ease infinite;
+          -webkit-mask: linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          pointer-events: none;
+        }
+
+        /* Animation for the textarea border */
+        @keyframes gradientMoveTextarea {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+        /* Style for the Textarea border when generating */
+        .gradient-border-textarea-wrapper::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          border-radius: 0.75rem; /* Matches rounded-xl */
+          padding: 1.5px; /* Border thickness */
+          background: linear-gradient(
+            90deg,
+            #3b82f6,
+            /* blue-500 */ #8b5cf6,
+            /* violet-500 */ #ec4899,
+            /* pink-500 */ #3b82f6
+          );
+          background-size: 300% 300%;
+          animation: gradientMoveTextarea 4s ease infinite; /* Slightly longer animation for a calmer effect */
+          -webkit-mask: linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          pointer-events: none; /* Ensure clicks/interactions pass through */
+        }
+      `}</style>
     </div>
   );
 });
