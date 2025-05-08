@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowUp, Code, Copy } from "lucide-react";
 import React from "react";
 import { Card } from "../ui/card";
-
+import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 interface Message {
   role: string;
   content: string;
@@ -59,8 +60,9 @@ const AIChatSection = React.memo(function AIChatSection({
               {message.code && (
                 <div className="mt-4 p-4 bg-gray-900 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs text-gray-400 flex items-center">
-                      <Code size={12} className="mr-1" /> Python
+                    <span className="text-xs font-semibold text-pink-500 dark:text-pink-400 flex items-center bg-pink-100/30 dark:bg-pink-900/20 px-2 py-0.5 rounded-full">
+                      <Code size={12} className="mr-1" />
+                      Python
                     </span>
                     <div className="flex gap-2">
                       <Button
@@ -83,9 +85,18 @@ const AIChatSection = React.memo(function AIChatSection({
                       )}
                     </div>
                   </div>
-                  <pre className="text-sm text-gray-300 overflow-x-auto max-h-60">
-                    <code>{message.code}</code>
-                  </pre>
+
+                  <SyntaxHighlighter
+                    language="python"
+                    style={oneDark}
+                    className="text-sm font-mono text-gray-100 bg-gray-800 rounded-md p-3 overflow-x-auto max-h-60 border border-gray-700"
+                    customStyle={{
+                      maxHeight: "15rem",
+                      borderRadius: "0.5rem",
+                    }}
+                  >
+                    {message.code}
+                  </SyntaxHighlighter>
                 </div>
               )}
             </Card>
