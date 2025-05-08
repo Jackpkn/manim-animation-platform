@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 interface UseProjectReturn {
   videoUrl: string | undefined;
@@ -6,9 +6,9 @@ interface UseProjectReturn {
   error: string | undefined;
   activeTab: string;
   code: string;
-  prompt: string;
+  prompt: string; // This state is mainly for the chat input area within the ProjectPage
   isGenerating: boolean;
-  conversation: { role: string; content: string }[];
+  conversation: { role: string; content: string; code?: string }[];
   setVideoUrl: (url: string | undefined) => void;
   setActiveTab: (tab: string) => void;
   setCode: (code: string) => void;
@@ -16,9 +16,11 @@ interface UseProjectReturn {
   handleRunAnimation: () => Promise<void>;
   handleSaveCode: () => Promise<void>;
   handleDownload: () => void;
-  handleSendMessage: () => Promise<void>;
+  handleSendMessage: (inputPrompt?: string) => Promise<void>;
 }
 
+// params.id is currently unused in the hook for fetching data,
+// but kept as per original signature.
 export function useProject(params: { id: string }): UseProjectReturn {
   const [videoUrl, setVideoUrl] = useState<string>();
   const [isExecuting, setIsExecuting] = useState(false);
@@ -32,7 +34,7 @@ class MyAnimation(Scene):
                 circle = Circle()
                 self.play(Create(circle))
                 self.wait(1)`);
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(""); // State for the chat input within the page
   const [isGenerating, setIsGenerating] = useState(false);
   const [conversation, setConversation] = useState<
     { role: string; content: string; code?: string }[]
@@ -60,13 +62,18 @@ class MyAnimation(Scene):
 
       const data = await response.json();
 
-      if (data.error) {
-        setError(data.error);
+      if (!response.ok) {
+        setError(data.error || `HTTP error! status: ${response.status}`);
       } else if (data.videoUrl) {
         setVideoUrl(data.videoUrl);
+        setError(undefined); // Clear previous errors on success
+      } else {
+        // Handle cases where response is 200 but no videoUrl (e.g., validation error from API)
+        setError(data.error || "An unknown error occurred during execution.");
       }
-    } catch (error) {
-      setError("Failed to execute animation");
+    } catch (error: any) {
+      // Catch network errors etc.
+      setError(`Failed to execute animation: ${error.message}`);
       console.error("Error executing animation:", error);
     } finally {
       setIsExecuting(false);
@@ -75,76 +82,138 @@ class MyAnimation(Scene):
 
   const handleSaveCode = async () => {
     console.log("Saving code:", code);
+    // TODO: Implement actual save logic (API call to save to database)
+    // This might involve params.id
+    alert("Code saved (simulated)!"); // Placeholder
   };
 
   const handleDownload = () => {
     if (videoUrl) {
       const a = document.createElement("a");
       a.href = videoUrl;
-      a.download = `animation-${params.id}.mp4`;
+      // Suggest a filename based on project ID or a generic name
+      a.download = `animation-${params.id || "export"}.mp4`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+    } else {
+      alert("No video preview available to download.");
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!prompt.trim()) return;
+  // Modified function to accept an optional inputPrompt and wrapped in useCallback
+  const handleSendMessage = useCallback(
+    async (inputPrompt?: string) => {
+      // Determine which prompt to use: the argument or the state
+      const actualPrompt = inputPrompt?.trim() || prompt.trim();
 
-    const newMessage = { role: "user", content: prompt };
-    setConversation([...conversation, newMessage]);
-    setPrompt("");
+      if (!actualPrompt) {
+        console.warn("Attempted to send empty message.");
+        return; // Don't send empty messages
+      }
 
-    setIsGenerating(true);
+      // IMPORTANT: The duplicate check inside handleSendMessage is tricky
+      // when state updates happen rapidly. Rely primarily on the useEffect
+      // logic in ProjectPage with the ref for the *initial* prompt.
+      // This check is more useful for preventing double-clicks on the chat input send button.
+      if (!inputPrompt) {
+        // Only apply this check for manual chat messages from the chat input
+        const lastMessage = conversation[conversation.length - 1];
+        if (
+          lastMessage?.role === "user" &&
+          lastMessage?.content === actualPrompt
+        ) {
+          console.log("Duplicate manual chat message detected, skipping...");
+          return;
+        }
+      }
 
-    try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ prompt: newMessage.content }),
-      });
+      // Add user message to conversation immediately
+      const newUserMessage = { role: "user", content: actualPrompt };
 
-      const data = await response.json();
+      // Use functional update to ensure we use the latest state
+      setConversation((prevConv) => [...prevConv, newUserMessage]);
 
-      if (data.code) {
-        setCode(data.code);
-        setConversation([
-          ...conversation,
-          newMessage,
-          {
-            role: "assistant",
-            content: data.explanation || "Here's the animation you requested.",
-            code: data.code,
+      // Only clear the stateful prompt if we used the state, not the argument
+      if (!inputPrompt) {
+        setPrompt(""); // Clear the chat input state if user typed it manually
+      }
+
+      setIsGenerating(true);
+      setError(undefined); // Clear previous errors
+
+      try {
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        ]);
-      } else {
-        setConversation([
-          ...conversation,
-          newMessage,
-          {
+          body: JSON.stringify({ prompt: actualPrompt }), // Send the actual prompt
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          // Handle API errors (e.g., rate limiting, internal server error from AI)
+          setError(
+            data.error ||
+              `AI generation failed: HTTP error! status: ${response.status}`
+          );
+          setConversation((prevConv) => [
+            // Use functional update for reliability
+            ...prevConv,
+            {
+              role: "assistant",
+              content: `Sorry, I encountered an error generating that: ${
+                data.error || response.statusText
+              }`,
+            },
+          ]);
+        } else if (data.code) {
+          setCode(data.code);
+          setConversation((prevConv) => [
+            // Use functional update for reliability
+            ...prevConv, // Keep previous messages (including the one just added above)
+            {
+              role: "assistant",
+              content:
+                data.explanation ||
+                "Here's the animation code based on your request.",
+              code: data.code, // Include code in conversation for display
+            },
+          ]);
+        } else {
+          // Handle successful response but no code (e.g., AI couldn't understand)
+          const assistantResponse = {
             role: "assistant",
             content:
+              data.explanation ||
               "I'm having trouble generating that animation. Could you provide more details?",
+          };
+          setConversation((prevConv) => [...prevConv, assistantResponse]); // Use functional update for reliability
+        }
+      } catch (error: any) {
+        // Catch network errors etc.
+        console.error("Error generating code:", error);
+        setConversation((prevConv) => [
+          // Use functional update for reliability
+          ...prevConv,
+          {
+            role: "assistant",
+            content: `Sorry, I encountered a network error while trying to generate your animation code: ${error.message}`,
           },
         ]);
+        setError(`Generation failed: ${error.message}`);
+      } finally {
+        setIsGenerating(false);
       }
-    } catch (error) {
-      console.error("Error generating code:", error);
-      setConversation([
-        ...conversation,
-        newMessage,
-        {
-          role: "assistant",
-          content:
-            "Sorry, I encountered an error while trying to generate your animation code.",
-        },
-      ]);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+    },
+    [prompt, conversation, setConversation, setIsGenerating, setError, setCode]
+  ); // Dependencies for useCallback
+
+  // Note: The hook currently doesn't load project data based on params.id on mount.
+  // If you intend to save/load projects, you'll need to add a useEffect here
+  // to fetch project data from your backend using params.id.
 
   return {
     videoUrl,
