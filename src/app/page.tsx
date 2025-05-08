@@ -6,13 +6,14 @@ import { v4 as uuidv4 } from "uuid";
 import { motion, useAnimation, useInView } from "framer-motion";
 
 // Import the new components
-import BackgroundOrbs from "@/components/BackgroundOrbs";
+// import BackgroundOrbs from "@/components/BackgroundOrbs";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import DemoAnimationSection from "@/components/DemoAnimationSection";
 import FeatureSection from "@/components/FeatureSection";
 import ExamplesSection from "@/components/ExamplesSection";
 import Footer from "@/components/Footer";
+import BackgroundOrbs from "@/components/BackgroundOrbs";
 
 export default function Home() {
   const router = useRouter();
