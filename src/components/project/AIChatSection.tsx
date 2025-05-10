@@ -135,7 +135,7 @@ const AIChatSection = React.memo(function AIChatSection({
           <Button
             onClick={onSendMessage}
             disabled={!prompt.trim() || isGenerating}
-            className="self-end h-10 w-10 rounded-full p-0 bg-blue-600 hover:bg-blue-700 transition-colors"
+            className="self-end h-10 w-10 rounded-full p-0 transition-colors"
           >
             <ArrowUp className="h-5 w-5" />
           </Button>
