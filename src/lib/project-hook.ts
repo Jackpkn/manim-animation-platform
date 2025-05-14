@@ -1,7 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 interface UseProjectReturn {
-  videoUrl: string | undefined;
+  videoUrl: string | null;
   isExecuting: boolean;
   error: string | undefined;
   activeTab: string;
@@ -9,7 +9,7 @@ interface UseProjectReturn {
   prompt: string; // This state is mainly for the chat input area within the ProjectPage
   isGenerating: boolean;
   conversation: { role: string; content: string; code?: string }[];
-  setVideoUrl: (url: string | undefined) => void;
+  setVideoUrl: (url: string | null) => void;
   setActiveTab: (tab: string) => void;
   setCode: (code: string) => void;
   setPrompt: (prompt: string) => void;
@@ -19,32 +19,101 @@ interface UseProjectReturn {
   handleSendMessage: (inputPrompt?: string) => Promise<void>;
 }
 
+const STORAGE_KEY = (id: string) => `project_${id}`;
+
 // params.id is currently unused in the hook for fetching data,
 // but kept as per original signature.
 export function useProject(params: { id: string }): UseProjectReturn {
-  const [videoUrl, setVideoUrl] = useState<string>();
+  // Initialize state with values from localStorage if available
+  const [videoUrl, setVideoUrl] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY(params.id));
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          return data.videoUrl || null;
+        } catch (e) {
+          console.error('Error parsing saved videoUrl:', e);
+        }
+      }
+    }
+    return null;
+  });
+
   const [isExecuting, setIsExecuting] = useState(false);
   const [error, setError] = useState<string>();
-  const [activeTab, setActiveTab] = useState("code");
-  const [code, setCode] = useState(`from manim import *
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY(params.id));
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          return data.activeTab || "code";
+        } catch (e) {
+          console.error('Error parsing saved activeTab:', e);
+        }
+      }
+    }
+    return "code";
+  });
+
+  const [code, setCode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY(params.id));
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          return data.code;
+        } catch (e) {
+          console.error('Error parsing saved code:', e);
+        }
+      }
+    }
+    return `from manim import *
 
 class MyAnimation(Scene):
         def construct(self):
                 # Your animation code here
                 circle = Circle()
                 self.play(Create(circle))
-                self.wait(1)`);
-  const [prompt, setPrompt] = useState(""); // State for the chat input within the page
+                self.wait(1)`;
+  });
+
+  const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [conversation, setConversation] = useState<
-    { role: string; content: string; code?: string }[]
-  >([
-    {
+  const [conversation, setConversation] = useState<{ role: string; content: string; code?: string }[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY(params.id));
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          return data.conversation || [{
+            role: "assistant",
+            content: "Hello! I'm your AI assistant. I can help you create animations with Manim. Just tell me what you'd like to animate.",
+          }];
+        } catch (e) {
+          console.error('Error parsing saved conversation:', e);
+        }
+      }
+    }
+    return [{
       role: "assistant",
-      content:
-        "Hello! I'm your AI assistant. I can help you create animations with Manim. Just tell me what you'd like to animate.",
-    },
-  ]);
+      content: "Hello! I'm your AI assistant. I can help you create animations with Manim. Just tell me what you'd like to animate.",
+    }];
+  });
+
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const data = {
+        videoUrl,
+        activeTab,
+        code,
+        conversation,
+      };
+      localStorage.setItem(STORAGE_KEY(params.id), JSON.stringify(data));
+    }
+  }, [videoUrl, activeTab, code, conversation, params.id]);
 
   const handleRunAnimation = async () => {
     setIsExecuting(true);
@@ -71,9 +140,10 @@ class MyAnimation(Scene):
         // Handle cases where response is 200 but no videoUrl (e.g., validation error from API)
         setError(data.error || "An unknown error occurred during execution.");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Catch network errors etc.
-      setError(`Failed to execute animation: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setError(`Failed to execute animation: ${errorMessage}`);
       console.error("Error executing animation:", error);
     } finally {
       setIsExecuting(false);
@@ -148,68 +218,67 @@ class MyAnimation(Scene):
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ prompt: actualPrompt }), // Send the actual prompt
+          body: JSON.stringify({ prompt: actualPrompt }),
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-          // Handle API errors (e.g., rate limiting, internal server error from AI)
           setError(
             data.error ||
-              `AI generation failed: HTTP error! status: ${response.status}`
+            `AI generation failed: HTTP error! status: ${response.status}`
           );
           setConversation((prevConv) => [
-            // Use functional update for reliability
             ...prevConv,
             {
               role: "assistant",
-              content: `Sorry, I encountered an error generating that: ${
-                data.error || response.statusText
-              }`,
+              content: `Sorry, I encountered an error generating that: ${data.error || response.statusText
+                }`,
             },
           ]);
         } else if (data.code) {
           setCode(data.code);
           setConversation((prevConv) => [
-            // Use functional update for reliability
-            ...prevConv, // Keep previous messages (including the one just added above)
+            ...prevConv,
             {
               role: "assistant",
               content:
                 data.explanation ||
                 "Here's the animation code based on your request.",
-              code: data.code, // Include code in conversation for display
+              code: data.code,
             },
           ]);
         } else {
-          // Handle successful response but no code (e.g., AI couldn't understand)
           const assistantResponse = {
             role: "assistant",
             content:
               data.explanation ||
               "I'm having trouble generating that animation. Could you provide more details?",
           };
-          setConversation((prevConv) => [...prevConv, assistantResponse]); // Use functional update for reliability
+          setConversation((prevConv) => [...prevConv, assistantResponse]);
         }
-      } catch (error: any) {
-        // Catch network errors etc.
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
         console.error("Error generating code:", error);
         setConversation((prevConv) => [
-          // Use functional update for reliability
           ...prevConv,
           {
             role: "assistant",
-            content: `Sorry, I encountered a network error while trying to generate your animation code: ${error.message}`,
+            content: `Sorry, I encountered a network error while trying to generate your animation code: ${errorMessage}`,
           },
         ]);
-        setError(`Generation failed: ${error.message}`);
+        setError(`Generation failed: ${errorMessage}`);
       } finally {
         setIsGenerating(false);
       }
     },
     [prompt, conversation, setConversation, setIsGenerating, setError, setCode]
-  ); // Dependencies for useCallback
+  );
+
+  // Create a wrapper for setVideoUrl to handle undefined values
+  const handleSetVideoUrl = useCallback((url: string | null) => {
+    setVideoUrl(url || null);
+  }, []);
 
   // Note: The hook currently doesn't load project data based on params.id on mount.
   // If you intend to save/load projects, you'll need to add a useEffect here
@@ -224,7 +293,7 @@ class MyAnimation(Scene):
     prompt,
     isGenerating,
     conversation,
-    setVideoUrl,
+    setVideoUrl: handleSetVideoUrl,
     setActiveTab,
     setCode,
     setPrompt,
