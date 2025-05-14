@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { useUser, useSignIn } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
+import { useUser, useSignIn } from "@clerk/nextjs"; 
+import { enhancePromptAction } from "@/app/actions/prompt"; 
 
 interface AnimationPromptInputProps {
   onSubmitAnimation: (prompt: string) => Promise<void>;
@@ -13,13 +13,13 @@ export default function AnimationPromptInput({
   isLoading,
 }: AnimationPromptInputProps) {
   const [prompt, setPrompt] = useState("");
+  const [isEnhancing, setIsEnhancing] = useState(false); // New state
   const { isSignedIn } = useUser();
   const { signIn } = useSignIn();
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim() || isLoading) return;
+    if (!prompt.trim() || isLoading || isEnhancing) return;
 
     if (!isSignedIn) {
       try {
@@ -36,9 +36,22 @@ export default function AnimationPromptInput({
   };
 
   const handleEnhancePrompt = async () => {
-    // Example logic: Replace with actual enhancement logic or API call
-    const enhanced = `Enhanced: ${prompt.trim()} (add more detail here...)`;
-    setPrompt(enhanced);
+    if (!prompt.trim()) return;
+
+    setIsEnhancing(true);
+    try {
+      const result = await enhancePromptAction(prompt);
+      if (result.success && result.enhancedPrompt) {
+        setPrompt(result.enhancedPrompt);
+      } else {
+        console.error("Failed to enhance prompt:", result.error);
+        // You might want to show an error message to the user here
+      }
+    } catch (error) {
+      console.error("Failed to enhance prompt:", error);
+    } finally {
+      setIsEnhancing(false);
+    }
   };
 
   return (
@@ -54,7 +67,7 @@ export default function AnimationPromptInput({
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               style={{ lineHeight: "1.6rem" }}
-              disabled={isLoading}
+              disabled={isLoading || isEnhancing} // Disable during enhancement
             />
 
             {/* Enhance Prompt Button Positioned Absolutely */}
@@ -63,13 +76,21 @@ export default function AnimationPromptInput({
               onClick={handleEnhancePrompt}
               className="absolute bottom-4 left-4 bg-gray-800/60 hover:bg-gray-700/80 transition p-1 rounded-full"
               title="Enhance Prompt"
-              disabled={isLoading || !prompt.trim()}
+              disabled={isLoading || isEnhancing || !prompt.trim()} // Disable during enhancement
             >
-              <img
-                src="/ai.svg"
-                alt="Enhance Prompt"
-                className="w-6 h-6 opacity-80 hover:opacity-100"
-              />
+              {isEnhancing ? (
+                <img
+                  src="/loading.svg"
+                  alt="Enhancing..."
+                  className="w-6 h-6 animate-spin"
+                />
+              ) : (
+                <img
+                  src="/ai.svg"
+                  alt="Enhance Prompt"
+                  className="w-6 h-6 opacity-80 hover:opacity-100"
+                />
+              )}
             </button>
           </div>
 
@@ -83,12 +104,11 @@ export default function AnimationPromptInput({
               whileHover={{ scale: !isLoading && prompt.trim() ? 1.03 : 1 }}
               whileTap={{ scale: !isLoading && prompt.trim() ? 0.97 : 1 }}
               type="submit"
-              disabled={isLoading || !prompt.trim()}
-              className={`px-8 py-3 rounded-xl font-medium flex items-center gap-2 ${
-                isLoading || !prompt.trim()
-                  ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
-              } transition-all duration-200`}
+              disabled={isLoading || isEnhancing || !prompt.trim()} // Disable during enhancement
+              className={`px-8 py-3 rounded-xl font-medium flex items-center gap-2 ${isLoading || isEnhancing || !prompt.trim()
+                ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+                : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
+                } transition-all duration-200`}
             >
               {isLoading ? (
                 <>
