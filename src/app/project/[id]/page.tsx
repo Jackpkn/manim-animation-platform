@@ -16,12 +16,15 @@ import ProjectHeader from "@/components/project/ProjectHeader";
 import { useProject } from "@/lib/project-hook";
 import IDE from "@/components/project/IDE";
 
-export default function ProjectPage({ params }: { params: { id: string } }) {
+interface ProjectParams {
+  id: string;
+}
+
+export default function ProjectPage({ params }: { params: ProjectParams }) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const {
-    videoUrl,
     isExecuting,
     error,
     activeTab,
@@ -29,7 +32,6 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     prompt,
     isGenerating,
     conversation,
-    setVideoUrl,
     setActiveTab,
     setCode,
     setPrompt,
@@ -38,8 +40,10 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
     handleDownload,
     handleSendMessage,
   } = useProject(params);
+
   const initialPrompt = searchParams.get("initialPrompt");
   const initialPromptProcessed = useRef(false);
+
   useEffect(() => {
     if (
       initialPrompt &&
@@ -109,7 +113,6 @@ export default function ProjectPage({ params }: { params: { id: string } }) {
                 <AnimationPreviewSection
                   isExecuting={isExecuting}
                   onDownload={handleDownload}
-                  videoUrl={videoUrl}
                   error={error}
                 />
               </TabsContent>
