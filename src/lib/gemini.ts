@@ -158,9 +158,8 @@ export async function generateManimResponse(
     console.error("Error in generateManimResponse:", error);
     let errorMessage = "Failed to generate response due to an API error.";
     if (axios.isAxiosError(error)) {
-      errorMessage = `Gemini API error: ${
-        error.response?.data?.error?.message || error.message
-      }`;
+      errorMessage = `Gemini API error: ${error.response?.data?.error?.message || error.message
+        }`;
       console.error(
         "Axios error details:",
         error.response?.data || error.message
@@ -169,5 +168,88 @@ export async function generateManimResponse(
       errorMessage = `Generation error: ${error.message}`;
     }
     return { explanation: errorMessage, code: "" };
+  }
+}
+
+// New function to enhance the prompt
+export async function enhancePrompt(prompt: string): Promise<string> {
+  console.log("API Key available:", !!API_KEY); // Log if API key exists
+  console.log("API Key length:", API_KEY?.length); // Log API key length (without exposing the key)
+
+  if (!API_KEY) {
+    console.error("GEMINI_API_KEY environment variable is not set.");
+    throw new Error("API key is not configured");
+  }
+
+  const enhancementPrompt = `You are an expert prompt engineer. Your goal is to take a user-provided prompt and make it more specific, descriptive, and detailed. The prompt is about creating an animation using the Manim library in Python. Focus on adding details that would help the AI generate more accurate and visually appealing Manim code. Return ONLY the enhanced prompt, nothing else. Do not explain. User Prompt: ${prompt}`;
+
+  try {
+    console.log("Making API request to enhance prompt...");
+    const response = await axios.post(
+      `${API_URL}?key=${API_KEY}`,
+      {
+        contents: [
+          {
+            parts: [
+              {
+                text: enhancementPrompt,
+              },
+            ],
+          },
+        ],
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("API Response received:", {
+      hasData: !!response.data,
+      hasCandidates: !!response.data?.candidates,
+      candidateCount: response.data?.candidates?.length,
+    });
+
+    if (
+      !response.data ||
+      !response.data.candidates ||
+      !response.data.candidates[0] ||
+      !response.data.candidates[0].content ||
+      !response.data.candidates[0].content.parts ||
+      !response.data.candidates[0].content.parts[0] ||
+      !response.data.candidates[0].content.parts[0].text
+    ) {
+      console.error(
+        "Invalid or empty response structure from Gemini API:",
+        response.data
+      );
+      throw new Error("Invalid response received from AI");
+    }
+
+    const enhancedText = response.data.candidates[0].content.parts[0].text.trim();
+
+    // If the response is empty or just whitespace
+    if (!enhancedText) {
+      throw new Error("AI returned an empty response");
+    }
+
+    return enhancedText;
+  } catch (error) {
+    console.error("Error enhancing prompt:", error);
+    if (axios.isAxiosError(error)) {
+      console.error("Axios error details:", {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+      });
+      throw new Error(
+        `API error: ${error.response?.data?.error?.message || error.message}`
+      );
+    } else if (error instanceof Error) {
+      throw error;
+    } else {
+      throw new Error("Failed to enhance prompt");
+    }
   }
 }
