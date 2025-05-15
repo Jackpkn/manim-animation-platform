@@ -1,6 +1,7 @@
 import React, { RefObject, useEffect } from "react";
 import { motion, useAnimation } from "framer-motion";
 import AnimationPromptInput from "./AnimationPromptInput";
+import HeroBackground from "./HeroBackground";
 
 interface HeroSectionProps {
   heroRef: RefObject<HTMLElement | null>;
@@ -27,8 +28,9 @@ export default function HeroSection({
   return (
     <section
       ref={heroRef}
-      className="relative pt-32 pb-16 md:pt-40 md:pb-24 px-4 z-20"
+      className="relative flex min-h-screen flex-col items-center justify-center px-4 pt-20 text-center md:pt-24" // Added padding, flex for centering
     >
+      <HeroBackground />
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial="hidden"
