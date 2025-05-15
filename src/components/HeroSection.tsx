@@ -44,14 +44,14 @@ export default function HeroSection({
               AI-Powered Mathematics
             </span>
           </div>
-          <h1 className="text-5xl md:text-7xl font-bold mb-6">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 font-inter">
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
               PromptViz Animation
             </span>
             <br />
             <span className="text-white">Platform</span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+          <p className="text-xl text-gray-400 max-w-3xl mx-auto font-inter">
             Transform complex mathematical concepts into stunning visual
             animations with the power of AI. Create, share, and explore
             mathematical beauty.
