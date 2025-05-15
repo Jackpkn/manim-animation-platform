@@ -45,7 +45,7 @@ export default function HeroSection({
             </span>
           </div>
           <h1 className="text-5xl md:text-7xl font-bold mb-6 font-inter">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
+            <span className="bg-clip-text text-transparent bg-[#D07149]">
               PromptViz Animation
             </span>
             <br />
