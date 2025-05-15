@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 import { motion, useAnimation, useInView } from "framer-motion";
-import BackgroundOrbs from "@/components/BackgroundOrbs";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import DemoAnimationSection from "@/components/DemoAnimationSection";
@@ -51,7 +50,6 @@ export default function Home() {
   return (
     <div className="min-h-screen relative bg-black text-white overflow-hidden">
       {/* Animated background */}
-      <BackgroundOrbs />
       {/* Main content */}
       <div className="relative z-10">
         {/* Header */}
