@@ -74,22 +74,28 @@ export default function AnimationPromptInput({
             <button
               type="button"
               onClick={handleEnhancePrompt}
-              className="absolute bottom-4 left-4 bg-gray-800/60 hover:bg-gray-700/80 transition p-1 rounded-full"
+              className="absolute bottom-4 right-4 flex items-center hover:opacity-80 transition p-2 rounded-lg"
               title="Enhance Prompt"
-              disabled={isLoading || isEnhancing || !prompt.trim()} // Disable during enhancement
+              disabled={isLoading || isEnhancing || !prompt.trim()}
             >
               {isEnhancing ? (
+              <>
                 <img
-                  src="/loading.svg"
-                  alt="Enhancing..."
-                  className="w-6 h-6 animate-spin"
+                src="/loading.svg"
+                alt="Enhancing..."
+                className="w-5 h-5 animate-spin"
                 />
+                <span className="ml-2 text-sm text-gray-300">Enhancing...</span>
+              </>
               ) : (
+              <>
                 <img
-                  src="/ai.svg"
-                  alt="Enhance Prompt"
-                  className="w-6 h-6 opacity-80 hover:opacity-100"
+                src="/ai.svg"
+                alt="Enhance Prompt"
+                className="w-5 h-5"
                 />
+                <span className="ml-2 text-sm text-gray-300">Enhance</span>
+              </>
               )}
             </button>
           </div>
