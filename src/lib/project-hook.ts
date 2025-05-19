@@ -158,16 +158,28 @@ class MyAnimation(Scene):
   };
 
   const handleDownload = () => {
-    if (videoUrl) {
+    if (!videoUrl) {
+      console.error("No video URL available for download");
+      return;
+    }
+
+    try {
+      // Create a temporary anchor element
       const a = document.createElement("a");
       a.href = videoUrl;
-      // Suggest a filename based on project ID or a generic name
-      a.download = `animation-${params.id || "export"}.mp4`;
+
+      // Generate a filename based on project ID and timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `animation-${params.id || 'export'}-${timestamp}.mp4`;
+      a.download = filename;
+
+      // Append to body, click, and remove
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } else {
-      alert("No video preview available to download.");
+    } catch (error) {
+      console.error("Error downloading video:", error);
+      setError("Failed to download video. Please try again.");
     }
   };
 
