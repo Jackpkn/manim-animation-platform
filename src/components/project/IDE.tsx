@@ -206,19 +206,21 @@ export default function IDE({
 
   return (
     <div className="flex h-full bg-gray-900 text-white gap-2 border border-gray-700">
-      <FileExplorer
-        fileSystem={fileSystem}
-        onFileSelect={handleFileSelect}
-        selectedFileId={selectedFile?.id || null}
-        onAddScene={addNewScene}
-        setFileSystem={function (
-          value: React.SetStateAction<FileSystemItem[]>
-        ): void {
-          throw new Error("Function not implemented.");
-        }}
-      />
+      <div className="w-64 flex-shrink-0 border-r border-gray-700">
+        <FileExplorer
+          fileSystem={fileSystem}
+          onFileSelect={handleFileSelect}
+          selectedFileId={selectedFile?.id || null}
+          onAddScene={addNewScene}
+          setFileSystem={function (
+            value: React.SetStateAction<FileSystemItem[]>
+          ): void {
+            throw new Error("Function not implemented.");
+          }}
+        />
+      </div>
 
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 min-w-0">
         {selectedFile ? (
           <CodeEditorSection
             code={selectedFile.content}
