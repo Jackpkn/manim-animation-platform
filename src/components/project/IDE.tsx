@@ -409,10 +409,9 @@ class ${className}(Scene):
         <div className="flex-1 min-h-0">
           {selectedFile ? (
             <CodeEditorSection
-              code={selectedFile.content}
+              code={code}
               onCodeChange={handleCodeChange}
-              onRunAnimation={handleSingleSceneRun}
-              isExecuting={isExecuting}
+              selectedFile={selectedFile}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-gray-500">
