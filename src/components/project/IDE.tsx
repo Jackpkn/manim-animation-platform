@@ -346,7 +346,7 @@ class ${className}(Scene):
   }, [selectedFile]);
 
   return (
-    <div className="flex h-full bg-gray-900 text-white gap-2 border border-gray-700">
+    <div className="flex h-full bg-[#1c1b1a] text-white gap-2 border border-gray-700">
       <div className="w-64 flex-shrink-0 border-r border-gray-700">
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center justify-between mb-2">
@@ -366,10 +366,7 @@ class ${className}(Scene):
             <>
               <div className="space-y-1">
                 {detectedScenes.map((scene, index) => (
-                  <div
-                    key={index}
-                    className="text-xs bg-gray-800 rounded px-2 py-1"
-                  >
+                  <div key={index} className="text-xs   rounded px-2 py-1">
                     <div className="font-medium text-blue-400">
                       {scene.className}
                     </div>
