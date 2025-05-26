@@ -77,12 +77,7 @@ export default function ProjectPage({ params }: { params: ProjectParams }) {
 
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup direction="horizontal">
-          <ResizablePanel
-            className="bg-gray-200 dark:bg-gray-700"
-            defaultSize={35}
-            minSize={20}
-            maxSize={40}
-          >
+          <ResizablePanel defaultSize={35} minSize={20} maxSize={40}>
             {" "}
             {/* Adjusted default and min/max sizes */}
             <AIChatSection
@@ -96,11 +91,7 @@ export default function ProjectPage({ params }: { params: ProjectParams }) {
 
           <ResizableHandle />
 
-          <ResizablePanel
-            defaultSize={65}
-            minSize={60}
-            className="bg-gray-200 dark:bg-gray-700 w-1"
-          >
+          <ResizablePanel defaultSize={65} minSize={60}>
             {" "}
             {/* Adjusted default size */}
             <Tabs
