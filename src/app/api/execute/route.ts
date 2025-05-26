@@ -1,77 +1,192 @@
-import { NextResponse } from 'next/server';
-import { execManimCode } from '@/lib/docker';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { v4 as uuidv4 } from 'uuid';
+// app/api/execute/route.ts - Improved API with multi-scene support
+import { NextResponse } from "next/server";
+import {
+  compileMultipleScenes,
+  compileSingleScene,
+  extractSceneClasses,
+} from "@/lib/docker";
+
+interface SceneFile {
+  name: string;
+  content: string;
+}
+
+interface ExecuteRequest {
+  code?: string; // For single file backward compatibility
+  scenes?: SceneFile[]; // For multi-scene support
+  combineVideos?: boolean;
+}
 
 export async function POST(request: Request) {
-    try {
-        const body = await request.json();
-        const code = body.code;
+  try {
+    const body: ExecuteRequest = await request.json();
+    const { code, scenes, combineVideos = true } = body;
 
-        if (!code) {
-            return NextResponse.json(
-                { error: 'Code is required' },
-                { status: 400 }
-            );
-        }
+    // Handle single code execution (backward compatibility)
+    if (code && !scenes) {
+      const sceneClasses = extractSceneClasses(code);
 
-        // Generate a unique filename
-        const filename = `${uuidv4()}.py`;
-        const tmpDir = join(process.cwd(), 'tmp');
-        const filepath = join(tmpDir, filename);
-
-        // Ensure tmp directory exists
-        await mkdir(tmpDir, { recursive: true });
-
-        // Convert code to string and ensure it's valid
-        let codeString: string;
-        try {
-            if (typeof code === 'string') {
-                codeString = code;
-            } else if (typeof code === 'object') {
-                codeString = JSON.stringify(code, null, 2);
-            } else {
-                codeString = String(code);
-            }
-
-            // Ensure the code string is not empty
-            if (!codeString.trim()) {
-                return NextResponse.json(
-                    { error: 'Code cannot be empty' },
-                    { status: 400 }
-                );
-            }
-        } catch (error) {
-            console.error('Error processing code:', error);
-            return NextResponse.json(
-                { error: 'Invalid code format' },
-                { status: 400 }
-            );
-        }
-
-        // Write the code to file
-        await writeFile(filepath, codeString, 'utf-8');
-
-        // Execute the code using Docker
-        const result = await execManimCode(filepath);
-
-        if (result.error) {
-            return NextResponse.json(
-                { error: result.error },
-                { status: 500 }
-            );
-        }
-
-        // Return the video URL
-        return NextResponse.json({
-            videoUrl: result.videoUrl
-        });
-    } catch (error) {
-        console.error('Error executing code:', error);
+      if (sceneClasses.length === 0) {
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Failed to execute code' },
-            { status: 500 }
+          {
+            error: "No valid Scene class found",
+            details:
+              "Code must contain a class that inherits from Scene (e.g., class MyScene(Scene):)",
+            code: code.substring(0, 200) + "...",
+          },
+          { status: 400 }
         );
+      }
+
+      // If single scene in single file
+      if (sceneClasses.length === 1) {
+        const result = await compileSingleScene(code, sceneClasses[0]);
+
+        if (!result.success) {
+          return NextResponse.json(
+            {
+              error: "Compilation failed",
+              details: result.error,
+              className: sceneClasses[0],
+            },
+            { status: 500 }
+          );
+        }
+
+        return NextResponse.json({
+          success: true,
+          videoUrl: result.videoUrl,
+          scenes: [{ scene: sceneClasses[0], videoUrl: result.videoUrl }],
+        });
+      }
+
+      // Multiple scenes in single file - treat as multi-scene
+      const sceneInfos = sceneClasses.map((className) => ({
+        className,
+        fileName: "main.py",
+        content: code,
+      }));
+
+      const result = await compileMultipleScenes(sceneInfos, combineVideos);
+
+      if (!result.success) {
+        return NextResponse.json(
+          {
+            error: "Multi-scene compilation failed",
+            details: result.error,
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        videoUrl: result.combinedVideoUrl,
+        individualScenes: result.individualVideos,
+        combinedVideo: result.combinedVideoUrl,
+      });
     }
-} 
+
+    // Handle multi-scene execution
+    if (scenes && scenes.length > 0) {
+      const sceneInfos: Array<{
+        className: string;
+        fileName: string;
+        content: string;
+      }> = [];
+
+      // Process each scene file
+      for (const sceneFile of scenes) {
+        const sceneClasses = extractSceneClasses(sceneFile.content);
+
+        if (sceneClasses.length === 0) {
+          return NextResponse.json(
+            {
+              error: `No valid Scene class found in ${sceneFile.name}`,
+              details: `File ${sceneFile.name} must contain a class that inherits from Scene`,
+              fileName: sceneFile.name,
+            },
+            { status: 400 }
+          );
+        }
+
+        // Add all scenes from this file
+        for (const className of sceneClasses) {
+          sceneInfos.push({
+            className,
+            fileName: sceneFile.name,
+            content: sceneFile.content,
+          });
+        }
+      }
+
+      if (sceneInfos.length === 0) {
+        return NextResponse.json(
+          {
+            error: "No scenes found in any files",
+            details: "At least one file must contain a valid Scene class",
+          },
+          { status: 400 }
+        );
+      }
+
+      const result = await compileMultipleScenes(sceneInfos, combineVideos);
+
+      if (!result.success) {
+        return NextResponse.json(
+          {
+            error: "Multi-scene compilation failed",
+            details: result.error,
+            sceneCount: sceneInfos.length,
+          },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        videoUrl: result.combinedVideoUrl, // Main video URL for preview
+        individualScenes: result.individualVideos, // Individual scene videos
+        combinedVideo: result.combinedVideoUrl, // Combined video
+        sceneCount: sceneInfos.length,
+      });
+    }
+
+    return NextResponse.json(
+      {
+        error: "Invalid request",
+        details: "Must provide either code or scenes array",
+      },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error("API execution error:", error);
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details:
+          error instanceof Error ? error.message : "Unknown error occurred",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// Add a GET endpoint to serve video files properly
+export async function GET(request: Request) {
+  try {
+    const url = new URL(request.url);
+    const videoId = url.searchParams.get("id");
+
+    if (!videoId) {
+      return NextResponse.json({ error: "Video ID required" }, { status: 400 });
+    }
+
+    // Return video URL for the client to fetch
+    return NextResponse.json({
+      videoUrl: `/videos/${videoId}`,
+    });
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to get video" }, { status: 500 });
+  }
+}
