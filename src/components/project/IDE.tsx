@@ -1,7 +1,7 @@
 // components/project/ImprovedIDE.tsx
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { PlayCircle, Film, Combine } from "lucide-react";
+import { PlayCircle, Film, Combine, ChevronDown } from "lucide-react";
 import CodeEditorSection from "./CodeEditorSection";
 import FileExplorer, { FileType, FileSystemItem } from "./FileExplorer";
 import { Label } from "@radix-ui/react-label";
@@ -97,7 +97,7 @@ class TriangleScene(Scene):
   const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
   const [detectedScenes, setDetectedScenes] = useState<SceneInfo[]>([]);
   const [combineMode, setCombineMode] = useState(true);
-  const [showSceneList, setShowSceneList] = useState(false); // Added showSceneList state
+  const [showSceneList, setShowSceneList] = useState(true); // Added showSceneList state
 
   // Find file by ID in the file system
   const findFileById = (
@@ -316,17 +316,14 @@ class ${className}(Scene):
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm font-medium">Project Scenes</div>
-            <div className="flex items-center space-x-2">
-              <Label
-                htmlFor="scene-list-toggle"
-                className="text-xs text-gray-500"
-              >
-                {showSceneList ? "Hide" : "Show"}
-              </Label>
-              <Switch
-                id="scene-list-toggle"
-                checked={showSceneList}
-                onCheckedChange={(checked) => setShowSceneList(checked)}
+            <div
+              className="flex items-center cursor-pointer"
+              onClick={() => setShowSceneList(!showSceneList)}
+            >
+              <ChevronDown
+                className={`h-4 w-4 text-gray-500 transition-transform ${
+                  showSceneList ? "rotate-180" : ""
+                }`}
               />
             </div>
           </div>
