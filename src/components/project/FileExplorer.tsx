@@ -244,7 +244,7 @@ export default function FileExplorer({
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-900 text-white border-r border-gray-700 w-64">
+    <div className="h-full flex flex-col   text-white border-r border-gray-700 w-64">
       <div className="p-2 border-b border-gray-700">
         <div className="flex justify-between items-center mb-2">
           <h2 className="font-semibold">EXPLORER</h2>
