@@ -72,7 +72,7 @@ export default function ProjectPage({ params }: { params: ProjectParams }) {
   ]);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen flex flex-col bg-[#141413] dark:bg-[#141413]">
       <ProjectHeader projectId={params.id} onSave={handleSaveCode} />
 
       <div className="flex-1 overflow-hidden">
