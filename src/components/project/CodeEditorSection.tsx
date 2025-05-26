@@ -76,9 +76,9 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
             <div
               key={file.id}
               className={cn(
-                "flex items-center space-x-2 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 cursor-pointer ml-2",
+                "flex items-center space-x-2 border rounded-md px-2 py-1 cursor-pointer ml-2",
                 file.id === selectedFile?.id
-                  ? " text-white"
+                  ? "border-orange-400 border-[1px] text-white"
                   : "hover:bg-gray-100 dark:hover:bg-gray-700"
               )}
             >
