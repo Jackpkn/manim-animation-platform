@@ -65,7 +65,7 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 mt-1">
         {selectedFile ? (
           <div className="flex items-center   w-full gap-2">
             <div className="flex items-center gap-2">
@@ -81,7 +81,7 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
               className="hover:text-red-500"
               aria-label={`Close ${selectedFile.name}`}
             >
-              <X className="h-4 w-4" />
+              <X className="h-4 w-4 mt-1" />
             </button>
           </div>
         ) : (
