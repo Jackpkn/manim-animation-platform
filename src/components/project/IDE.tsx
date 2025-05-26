@@ -98,7 +98,7 @@ class TriangleScene(Scene):
   const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
   const [detectedScenes, setDetectedScenes] = useState<SceneInfo[]>([]);
   const [combineMode, setCombineMode] = useState(true);
-  const [showSceneList, setShowSceneList] = useState(true); // Added showSceneList state
+  const [showSceneList, setShowSceneList] = useState(false);
   const [localCode, setLocalCode] = useState<string>("");
 
   // Find file by ID in the file system
