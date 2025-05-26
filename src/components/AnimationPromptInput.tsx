@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useUser, useSignIn } from "@clerk/nextjs"; 
-import { enhancePromptAction } from "@/app/actions/prompt"; 
+import { useUser, useSignIn } from "@clerk/nextjs";
+import { enhancePromptAction } from "@/app/actions/prompt";
 
 interface AnimationPromptInputProps {
   onSubmitAnimation: (prompt: string) => Promise<void>;
@@ -13,15 +13,34 @@ export default function AnimationPromptInput({
   isLoading,
 }: AnimationPromptInputProps) {
   const [prompt, setPrompt] = useState("");
-  const [isEnhancing, setIsEnhancing] = useState(false); // New state
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const { isSignedIn } = useUser();
-  const { signIn } = useSignIn();
+  const { signIn, isLoaded: signInLoaded } = useSignIn();
+
+  const [clerkReady, setClerkReady] = useState(false);
+  const [signInCooldown, setSignInCooldown] = useState(false); // New cooldown state
+
+  useEffect(() => {
+    if (isSignedIn !== undefined && signInLoaded) {
+      setClerkReady(true);
+    }
+  }, [isSignedIn, signInLoaded]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim() || isLoading || isEnhancing) return;
+    if (!prompt.trim() || isLoading || isEnhancing || signInCooldown) return; // Check cooldown
 
     if (!isSignedIn) {
+      if (!clerkReady) {
+        console.warn("Clerk not ready, preventing sign-in attempt.");
+        return;
+      }
+      // Apply cooldown
+      setSignInCooldown(true);
+      setTimeout(() => {
+        setSignInCooldown(false);
+      }, 5000); // 5 seconds cooldown (adjust as needed)
+
       try {
         await signIn?.create({
           strategy: "oauth_google",
@@ -79,23 +98,21 @@ export default function AnimationPromptInput({
               disabled={isLoading || isEnhancing || !prompt.trim()}
             >
               {isEnhancing ? (
-              <>
-                <img
-                src="/loading.svg"
-                alt="Enhancing..."
-                className="w-5 h-5 animate-spin"
-                />
-                <span className="ml-2 text-sm text-gray-300">Enhancing...</span>
-              </>
+                <>
+                  <img
+                    src="/loading.svg"
+                    alt="Enhancing..."
+                    className="w-5 h-5 animate-spin"
+                  />
+                  <span className="ml-2 text-sm text-gray-300">
+                    Enhancing...
+                  </span>
+                </>
               ) : (
-              <>
-                <img
-                src="/ai.svg"
-                alt="Enhance Prompt"
-                className="w-5 h-5"
-                />
-                <span className="ml-2 text-sm text-gray-300">Enhance</span>
-              </>
+                <>
+                  <img src="/ai.svg" alt="Enhance Prompt" className="w-5 h-5" />
+                  <span className="ml-2 text-sm text-gray-300">Enhance</span>
+                </>
               )}
             </button>
           </div>
@@ -110,11 +127,14 @@ export default function AnimationPromptInput({
               whileHover={{ scale: !isLoading && prompt.trim() ? 1.03 : 1 }}
               whileTap={{ scale: !isLoading && prompt.trim() ? 0.97 : 1 }}
               type="submit"
-              disabled={isLoading || isEnhancing || !prompt.trim()} // Disable during enhancement
-              className={`px-8 py-3 rounded-xl font-medium flex items-center gap-2 ${isLoading || isEnhancing || !prompt.trim()
-                ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-                : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
-                } transition-all duration-200`}
+              disabled={
+                isLoading || isEnhancing || !prompt.trim() || signInCooldown
+              } // Check cooldown
+              className={`px-8 py-3 rounded-xl font-medium flex items-center gap-2 ${
+                isLoading || isEnhancing || !prompt.trim() || signInCooldown
+                  ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+                  : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700"
+              } transition-all duration-200`}
             >
               {isLoading ? (
                 <>
@@ -128,7 +148,11 @@ export default function AnimationPromptInput({
               ) : (
                 <>
                   <span>
-                    {isSignedIn ? "Create Animation" : "Sign in to Create"}
+                    {isSignedIn
+                      ? "Create Animation"
+                      : signInCooldown
+                      ? "Please wait..."
+                      : "Sign in to Create"}
                   </span>
                   <img
                     src="/forward-arrow.svg"
