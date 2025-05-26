@@ -94,12 +94,12 @@ class TriangleScene(Scene):
 
   const [fileSystem, setFileSystem] =
     useState<FileSystemItem[]>(initialFileSystem);
-  const [openFiles, setOpenFiles] = useState<FileType[]>([]); // Array of open files
+  const [openFiles, setOpenFiles] = useState<FileType[]>([]);
   const [selectedFile, setSelectedFile] = useState<FileType | null>(null);
   const [detectedScenes, setDetectedScenes] = useState<SceneInfo[]>([]);
   const [combineMode, setCombineMode] = useState(true);
   const [showSceneList, setShowSceneList] = useState(true); // Added showSceneList state
-  const [localCode, setLocalCode] = useState<string>(""); // Local state for code in editor
+  const [localCode, setLocalCode] = useState<string>("");
 
   // Find file by ID in the file system
   const findFileById = (
@@ -183,10 +183,10 @@ class TriangleScene(Scene):
       if (mainFile) {
         // Check if the file is already open
         if (!openFiles.some((openFile) => openFile.id === mainFile.id)) {
-          setOpenFiles((prevOpenFiles) => [...prevOpenFiles, mainFile]); // Add to open files
+          setOpenFiles((prevOpenFiles) => [...prevOpenFiles, mainFile]);
         }
         setSelectedFile(mainFile);
-        setLocalCode(mainFile.content); // Initialize code with content of main.py
+        setLocalCode(mainFile.content);
       }
     }
   }, [fileSystem, selectedFile, openFiles]);
@@ -213,7 +213,7 @@ class TriangleScene(Scene):
   // Handle code changes
   const handleCodeChange = (newCode: string) => {
     if (selectedFile) {
-      setLocalCode(newCode); // Update local code state
+      setLocalCode(newCode);
       const updatedFileSystem = updateFileContent(
         selectedFile.id,
         newCode,
@@ -237,10 +237,10 @@ class TriangleScene(Scene):
   const handleFileSelect = (file: FileType) => {
     // Check if the file is already open
     if (!openFiles.some((openFile) => openFile.id === file.id)) {
-      setOpenFiles((prevOpenFiles) => [...prevOpenFiles, file]); // Add to open files
+      setOpenFiles((prevOpenFiles) => [...prevOpenFiles, file]);
     }
     setSelectedFile(file);
-    setLocalCode(file.content); // Load content into local state
+    setLocalCode(file.content);
   };
 
   // Add a new scene file
@@ -288,7 +288,7 @@ class ${className}(Scene):
     setFileSystem(updatedFileSystem);
     setSelectedFile(newFile);
     setOpenFiles((prevOpenFiles) => [...prevOpenFiles, newFile]);
-    setLocalCode(newFile.content); // Also load content into local state when creating
+    setLocalCode(newFile.content);
   };
 
   // Handle multi-scene execution
@@ -334,6 +334,21 @@ class ${className}(Scene):
       setSelectedFile(null);
       setLocalCode("");
     }
+
+    //If after deleting and there is another item in openFiles, select the first one
+    setOpenFiles((prevOpenFiles) => {
+      const updatedOpenFiles = prevOpenFiles.filter(
+        (file) => file.id !== fileId
+      );
+      if (updatedOpenFiles.length > 0) {
+        setSelectedFile(updatedOpenFiles[0]);
+        setLocalCode(updatedOpenFiles[0].content);
+      } else {
+        setSelectedFile(null);
+        setLocalCode("");
+      }
+      return updatedOpenFiles;
+    });
   };
 
   // Determine code based on selected file
@@ -444,10 +459,12 @@ class ${className}(Scene):
         <div className="flex-1 min-h-0">
           {selectedFile ? (
             <CodeEditorSection
-              code={localCode} // Use local code state
+              code={localCode}
               onCodeChange={handleCodeChange}
-              selectedFile={selectedFile}
+              openFiles={openFiles}
               onCloseFile={handleCloseFile}
+              selectedFile={selectedFile}
+              setSelectedFile={setSelectedFile}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-gray-500">
