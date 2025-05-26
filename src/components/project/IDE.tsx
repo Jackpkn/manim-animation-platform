@@ -321,7 +321,7 @@ class ${className}(Scene):
               onClick={() => setShowSceneList(!showSceneList)}
             >
               <ChevronDown
-                className={`h-4 w-4 text-gray-500 transition-transform ${
+                className={`h-5 w-5 transition-transform ${
                   showSceneList ? "rotate-180" : ""
                 }`}
               />
