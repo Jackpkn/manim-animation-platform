@@ -1,8 +1,12 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Button } from "@/components/ui/button";
-import { PlayCircle } from "lucide-react";
 import { editor } from "monaco-editor";
+import { File, X } from "lucide-react"; // Import File and X icons
+import { FileType } from "./FileExplorer"; // Import FileType
+
+const PythonFileIcon = () => (
+  <img src="/python.svg" alt="python icon" className="w-4 h-4" />
+);
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -11,15 +15,15 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 interface CodeEditorSectionProps {
   code: string;
   onCodeChange: (code: string) => void;
-  onRunAnimation: () => void;
-  isExecuting: boolean;
+  selectedFile: FileType | null; // Add selectedFile prop
+  onCloseFile: (fileId: string) => void; // Function to close file
 }
 
 const CodeEditorSection = React.memo(function CodeEditorSection({
   code,
   onCodeChange,
-  onRunAnimation,
-  isExecuting,
+  selectedFile, // Destructure selectedFile
+  onCloseFile, // Destructure onCloseFile
 }: CodeEditorSectionProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
@@ -62,11 +66,27 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Code Editor</h2>
-        <Button onClick={onRunAnimation} disabled={isExecuting}>
-          <PlayCircle className="mr-2 h-4 w-4" />
-          Run Animation
-        </Button>
+        {selectedFile ? (
+          <div className="flex items-center   w-full gap-2">
+            <div className="flex items-center gap-2">
+              {selectedFile.name.endsWith(".py") ? (
+                <PythonFileIcon />
+              ) : (
+                <File className="mr-2  h-4 w-4" />
+              )}
+              <h2 className="text-lg font-semibold">{selectedFile.name}</h2>
+            </div>
+            <button
+              onClick={() => onCloseFile(selectedFile.id)}
+              className="hover:text-red-500"
+              aria-label={`Close ${selectedFile.name}`}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <h2 className="text-lg font-semibold">Code Editor</h2>
+        )}
       </div>
       <div className="relative rounded-md overflow-hidden border border-gray-300 dark:border-gray-600 flex-1">
         <MonacoEditor
