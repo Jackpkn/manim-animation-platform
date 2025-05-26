@@ -1,4 +1,3 @@
-// components/project/ImprovedIDE.tsx
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { PlayCircle, Film, Combine, ChevronDown } from "lucide-react";
@@ -178,18 +177,16 @@ class TriangleScene(Scene):
 
   // Initialize selected file
   useEffect(() => {
-    if (!selectedFile) {
-      const mainFile = findFileById("file-main", fileSystem);
-      if (mainFile) {
-        // Check if the file is already open
-        if (!openFiles.some((openFile) => openFile.id === mainFile.id)) {
-          setOpenFiles((prevOpenFiles) => [...prevOpenFiles, mainFile]);
-        }
-        setSelectedFile(mainFile);
-        setLocalCode(mainFile.content);
+    const mainFile = findFileById("file-main", fileSystem);
+    if (mainFile) {
+      // Check if the file is already open
+      if (!openFiles.some((openFile) => openFile.id === mainFile.id)) {
+        setOpenFiles((prevOpenFiles) => [...prevOpenFiles, mainFile]);
       }
+      setSelectedFile(mainFile);
+      setLocalCode(mainFile.content);
     }
-  }, [fileSystem, selectedFile, openFiles]);
+  }, [fileSystem]);
 
   // Update file content in the file system
   const updateFileContent = (
@@ -220,11 +217,6 @@ class TriangleScene(Scene):
         fileSystem
       );
       setFileSystem(updatedFileSystem);
-
-      setSelectedFile({
-        ...selectedFile,
-        content: newCode,
-      });
 
       // Update main code if editing main.py
       if (selectedFile.id === "file-main") {
@@ -329,17 +321,11 @@ class ${className}(Scene):
     setOpenFiles((prevOpenFiles) =>
       prevOpenFiles.filter((file) => file.id !== fileId)
     );
-    if (selectedFile?.id === fileId) {
-      // If closing the selected file, clear the code and selected file
-      setSelectedFile(null);
-      setLocalCode("");
-    }
 
-    //If after deleting and there is another item in openFiles, select the first one
-    setOpenFiles((prevOpenFiles) => {
-      const updatedOpenFiles = prevOpenFiles.filter(
-        (file) => file.id !== fileId
-      );
+    if (selectedFile?.id === fileId) {
+      // If closing the selected file, select another open file or clear
+      const updatedOpenFiles = openFiles.filter((file) => file.id !== fileId);
+
       if (updatedOpenFiles.length > 0) {
         setSelectedFile(updatedOpenFiles[0]);
         setLocalCode(updatedOpenFiles[0].content);
@@ -347,8 +333,7 @@ class ${className}(Scene):
         setSelectedFile(null);
         setLocalCode("");
       }
-      return updatedOpenFiles;
-    });
+    }
   };
 
   // Determine code based on selected file

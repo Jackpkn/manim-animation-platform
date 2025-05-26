@@ -1,9 +1,10 @@
-import React, { useRef, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { editor } from "monaco-editor";
 import { File, X } from "lucide-react"; // Import File and X icons
 import { FileType } from "./FileExplorer"; // Import FileType
 import { cn } from "@/lib/utils";
+import { useCallback, useEffect, useRef } from "react";
+import React from "react";
 
 const PythonFileIcon = () => (
   <img src="/python.svg" alt="python icon" className="w-4 h-4" />
@@ -32,35 +33,38 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
 }: CodeEditorSectionProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
-  const handleEditorDidMount = (
-    editor: editor.IStandaloneCodeEditor,
-    monacoInstance: typeof import("monaco-editor")
-  ) => {
-    editorRef.current = editor;
+  const handleEditorDidMount = useCallback(
+    (
+      editor: editor.IStandaloneCodeEditor,
+      monacoInstance: typeof import("monaco-editor")
+    ) => {
+      editorRef.current = editor;
 
-    monacoInstance.editor.defineTheme("custom-dark", {
-      base: "vs-dark",
-      inherit: true,
-      rules: [
-        { token: "identifier", foreground: "C5CCD6" },
-        { token: "identifier.function", foreground: "7EBFFF" },
-        { token: "type", foreground: "FFD68A" },
-        { token: "keyword", foreground: "D388FF" },
-        { token: "string", foreground: "A8D68A" },
-        { token: "comment", foreground: "767C88" },
-        { token: "number", foreground: "E5AA73" },
-      ],
-      colors: {
-        "editor.background": "#101828",
-        "editor.foreground": "#C5CCD6",
-        "editor.lineHighlightBackground": "#2F353F",
-        "editor.selectionBackground": "#404859",
-        "editorCursor.foreground": "#61A0FF",
-      },
-    });
+      monacoInstance.editor.defineTheme("custom-dark", {
+        base: "vs-dark",
+        inherit: true,
+        rules: [
+          { token: "identifier", foreground: "C5CCD6" },
+          { token: "identifier.function", foreground: "7EBFFF" },
+          { token: "type", foreground: "FFD68A" },
+          { token: "keyword", foreground: "D388FF" },
+          { token: "string", foreground: "A8D68A" },
+          { token: "comment", foreground: "767C88" },
+          { token: "number", foreground: "E5AA73" },
+        ],
+        colors: {
+          "editor.background": "#101828",
+          "editor.foreground": "#C5CCD6",
+          "editor.lineHighlightBackground": "#2F353F",
+          "editor.selectionBackground": "#404859",
+          "editorCursor.foreground": "#61A0FF",
+        },
+      });
 
-    monacoInstance.editor.setTheme("custom-dark");
-  };
+      monacoInstance.editor.setTheme("custom-dark");
+    },
+    []
+  );
 
   useEffect(() => {
     if (editorRef.current) {
@@ -72,39 +76,46 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
     <div className="flex flex-col h-full">
       <div className="flex items-center mb-2 overflow-x-auto mt-2">
         {openFiles.length > 0 ? (
-          openFiles.map((file) => (
-            <div
-              key={file.id}
-              className={cn(
-                "flex items-center space-x-2 border rounded-md px-2 py-1 cursor-pointer ml-2",
-                file.id === selectedFile?.id
-                  ? "border-orange-400 border-[1px] text-white"
-                  : "hover:bg-gray-100 dark:hover:bg-gray-700"
-              )}
-            >
-              <button
-                onClick={() => setSelectedFile(file)}
-                className="flex items-center space-x-1"
-              >
-                {file.name.endsWith(".py") ? (
-                  <PythonFileIcon />
-                ) : (
-                  <File className="h-4 w-4" />
+          openFiles.map((file) => {
+            // Defensive check for unique IDs
+            if (!file.id) {
+              console.error("File object missing ID:", file);
+              return null; // Skip rendering this file
+            }
+            return (
+              <div
+                key={file.id}
+                className={cn(
+                  "flex items-center space-x-2 border rounded-md px-2 py-1 cursor-pointer ml-2",
+                  file.id === selectedFile?.id
+                    ? "border-orange-400 border-[1px] text-white"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-700"
                 )}
-                <span className="text-sm">{file.name}</span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent tab click
-                  onCloseFile(file.id);
-                }}
-                className="hover:text-red-500"
-                aria-label={`Close ${file.name}`}
               >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ))
+                <button
+                  onClick={() => setSelectedFile(file)}
+                  className="flex items-center space-x-1"
+                >
+                  {file.name.endsWith(".py") ? (
+                    <PythonFileIcon />
+                  ) : (
+                    <File className="h-4 w-4" />
+                  )}
+                  <span className="text-sm">{file.name}</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent tab click
+                    onCloseFile(file.id);
+                  }}
+                  className="hover:text-red-500"
+                  aria-label={`Close ${file.name}`}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            );
+          })
         ) : (
           <h2 className="text-lg font-semibold">Code Editor</h2>
         )}
