@@ -17,6 +17,10 @@ interface UseProjectReturn {
   handleSaveCode: () => Promise<void>;
   handleDownload: () => void;
   handleSendMessage: (inputPrompt?: string) => Promise<void>;
+  handleMultiSceneRun: (
+    scenes: { fileName: string; className: string; content: string }[],
+    combineVideos: boolean
+  ) => Promise<void>;
 }
 
 const STORAGE_KEY = (id: string) => `project_${id}`;
@@ -26,14 +30,14 @@ const STORAGE_KEY = (id: string) => `project_${id}`;
 export function useProject(params: { id: string }): UseProjectReturn {
   // Initialize state with values from localStorage if available
   const [videoUrl, setVideoUrl] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const saved = localStorage.getItem(STORAGE_KEY(params.id));
       if (saved) {
         try {
           const data = JSON.parse(saved);
           return data.videoUrl || null;
         } catch (e) {
-          console.error('Error parsing saved videoUrl:', e);
+          console.error("Error parsing saved videoUrl:", e);
         }
       }
     }
@@ -43,14 +47,14 @@ export function useProject(params: { id: string }): UseProjectReturn {
   const [isExecuting, setIsExecuting] = useState(false);
   const [error, setError] = useState<string>();
   const [activeTab, setActiveTab] = useState(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const saved = localStorage.getItem(STORAGE_KEY(params.id));
       if (saved) {
         try {
           const data = JSON.parse(saved);
           return data.activeTab || "code";
         } catch (e) {
-          console.error('Error parsing saved activeTab:', e);
+          console.error("Error parsing saved activeTab:", e);
         }
       }
     }
@@ -58,14 +62,14 @@ export function useProject(params: { id: string }): UseProjectReturn {
   });
 
   const [code, setCode] = useState(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const saved = localStorage.getItem(STORAGE_KEY(params.id));
       if (saved) {
         try {
           const data = JSON.parse(saved);
           return data.code;
         } catch (e) {
-          console.error('Error parsing saved code:', e);
+          console.error("Error parsing saved code:", e);
         }
       }
     }
@@ -81,30 +85,40 @@ class MyAnimation(Scene):
 
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [conversation, setConversation] = useState<{ role: string; content: string; code?: string }[]>(() => {
-    if (typeof window !== 'undefined') {
+  const [conversation, setConversation] = useState<
+    { role: string; content: string; code?: string }[]
+  >(() => {
+    if (typeof window !== "undefined") {
       const saved = localStorage.getItem(STORAGE_KEY(params.id));
       if (saved) {
         try {
           const data = JSON.parse(saved);
-          return data.conversation || [{
-            role: "assistant",
-            content: "Hello! I'm your AI assistant. I can help you create animations with Manim. Just tell me what you'd like to animate.",
-          }];
+          return (
+            data.conversation || [
+              {
+                role: "assistant",
+                content:
+                  "Hello! I'm your AI assistant. I can help you create animations with Manim. Just tell me what you'd like to animate.",
+              },
+            ]
+          );
         } catch (e) {
-          console.error('Error parsing saved conversation:', e);
+          console.error("Error parsing saved conversation:", e);
         }
       }
     }
-    return [{
-      role: "assistant",
-      content: "Hello! I'm your AI assistant. I can help you create animations with Manim. Just tell me what you'd like to animate.",
-    }];
+    return [
+      {
+        role: "assistant",
+        content:
+          "Hello! I'm your AI assistant. I can help you create animations with Manim. Just tell me what you'd like to animate.",
+      },
+    ];
   });
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const data = {
         videoUrl,
         activeTab,
@@ -142,7 +156,8 @@ class MyAnimation(Scene):
       }
     } catch (error: unknown) {
       // Catch network errors etc.
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
       setError(`Failed to execute animation: ${errorMessage}`);
       console.error("Error executing animation:", error);
     } finally {
@@ -169,8 +184,8 @@ class MyAnimation(Scene):
       a.href = videoUrl;
 
       // Generate a filename based on project ID and timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `animation-${params.id || 'export'}-${timestamp}.mp4`;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `animation-${params.id || "export"}-${timestamp}.mp4`;
       a.download = filename;
 
       // Append to body, click, and remove
@@ -238,14 +253,15 @@ class MyAnimation(Scene):
         if (!response.ok) {
           setError(
             data.error ||
-            `AI generation failed: HTTP error! status: ${response.status}`
+              `AI generation failed: HTTP error! status: ${response.status}`
           );
           setConversation((prevConv) => [
             ...prevConv,
             {
               role: "assistant",
-              content: `Sorry, I encountered an error generating that: ${data.error || response.statusText
-                }`,
+              content: `Sorry, I encountered an error generating that: ${
+                data.error || response.statusText
+              }`,
             },
           ]);
         } else if (data.code) {
@@ -270,7 +286,8 @@ class MyAnimation(Scene):
           setConversation((prevConv) => [...prevConv, assistantResponse]);
         }
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error occurred";
         console.error("Error generating code:", error);
         setConversation((prevConv) => [
           ...prevConv,
@@ -285,6 +302,49 @@ class MyAnimation(Scene):
       }
     },
     [prompt, conversation, setConversation, setIsGenerating, setError, setCode]
+  );
+
+  const handleMultiSceneRun = useCallback(
+    async (
+      scenes: { fileName: string; className: string; content: string }[],
+      combineVideos: boolean
+    ) => {
+      setIsExecuting(true);
+      setError(undefined);
+      setActiveTab("preview");
+
+      try {
+        const response = await fetch("/api/execute", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ scenes, combineVideos }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setError(data.error || `HTTP error! status: ${response.status}`);
+        } else if (data.videoUrl) {
+          setVideoUrl(data.videoUrl);
+          setError(undefined); // Clear previous errors on success
+        } else {
+          setError(
+            data.error ||
+              "An unknown error occurred during multi-scene execution."
+          );
+        }
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error occurred";
+        setError(`Failed to execute multi-scene animation: ${errorMessage}`);
+        console.error("Error executing multi-scene animation:", error);
+      } finally {
+        setIsExecuting(false);
+      }
+    },
+    [setIsExecuting, setError, setActiveTab, setVideoUrl]
   );
 
   // Create a wrapper for setVideoUrl to handle undefined values
@@ -313,5 +373,6 @@ class MyAnimation(Scene):
     handleSaveCode,
     handleDownload,
     handleSendMessage,
+    handleMultiSceneRun,
   };
 }
