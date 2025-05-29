@@ -5,18 +5,19 @@ interface UseProjectReturn {
   isExecuting: boolean;
   error: string | undefined;
   activeTab: string;
-  code: string;
-  prompt: string; // This state is mainly for the chat input area within the ProjectPage
+  prompt: string;
   isGenerating: boolean;
   conversation: { role: string; content: string; code?: string }[];
   setVideoUrl: (url: string | null) => void;
   setActiveTab: (tab: string) => void;
-  setCode: (code: string) => void;
   setPrompt: (prompt: string) => void;
-  handleRunAnimation: () => Promise<void>;
+  handleRunAnimation: (currentFileContent: string) => Promise<void>;
   handleSaveCode: () => Promise<void>;
   handleDownload: () => void;
-  handleSendMessage: (inputPrompt?: string) => Promise<void>;
+  handleSendMessage: (
+    inputPrompt?: string,
+    currentFileContent?: string
+  ) => Promise<string | undefined>;
   handleMultiSceneRun: (
     scenes: { fileName: string; className: string; content: string }[],
     combineVideos: boolean
@@ -25,10 +26,7 @@ interface UseProjectReturn {
 
 const STORAGE_KEY = (id: string) => `project_${id}`;
 
-// params.id is currently unused in the hook for fetching data,
-// but kept as per original signature.
 export function useProject(params: { id: string }): UseProjectReturn {
-  // Initialize state with values from localStorage if available
   const [videoUrl, setVideoUrl] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(STORAGE_KEY(params.id));
@@ -59,28 +57,6 @@ export function useProject(params: { id: string }): UseProjectReturn {
       }
     }
     return "code";
-  });
-
-  const [code, setCode] = useState(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_KEY(params.id));
-      if (saved) {
-        try {
-          const data = JSON.parse(saved);
-          return data.code;
-        } catch (e) {
-          console.error("Error parsing saved code:", e);
-        }
-      }
-    }
-    return `from manim import *
-
-class MyAnimation(Scene):
-        def construct(self):
-                # Your animation code here
-                circle = Circle()
-                self.play(Create(circle))
-                self.wait(1)`;
   });
 
   const [prompt, setPrompt] = useState("");
@@ -122,14 +98,14 @@ class MyAnimation(Scene):
       const data = {
         videoUrl,
         activeTab,
-        code,
         conversation,
       };
       localStorage.setItem(STORAGE_KEY(params.id), JSON.stringify(data));
     }
-  }, [videoUrl, activeTab, code, conversation, params.id]);
+  }, [videoUrl, activeTab, conversation, params.id]);
 
-  const handleRunAnimation = async () => {
+  // MODIFIED: Accepts currentFileContent as an argument
+  const handleRunAnimation = useCallback(async (currentFileContent: string) => {
     setIsExecuting(true);
     setError(undefined);
     setActiveTab("preview");
@@ -140,7 +116,7 @@ class MyAnimation(Scene):
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code: currentFileContent }),
       });
 
       const data = await response.json();
@@ -149,9 +125,8 @@ class MyAnimation(Scene):
         setError(data.error || `HTTP error! status: ${response.status}`);
       } else if (data.videoUrl) {
         setVideoUrl(data.videoUrl);
-        setError(undefined); // Clear previous errors on success
+        setError(undefined);
       } else {
-        // Handle cases where response is 200 but no videoUrl (e.g., validation error from API)
         setError(data.error || "An unknown error occurred during execution.");
       }
     } catch (error: unknown) {
@@ -163,12 +138,14 @@ class MyAnimation(Scene):
     } finally {
       setIsExecuting(false);
     }
-  };
+  }, []); // Dependencies are now empty, as it takes content as an argument
 
   const handleSaveCode = async () => {
-    console.log("Saving code:", code);
+    console.log(
+      "Saving code (simulated - actual code needs to be passed from ProjectPage's selectedFile): TODO"
+    );
     // TODO: Implement actual save logic (API call to save to database)
-    // This might involve params.id
+    // This might involve params.id and the current selected file's content
     alert("Code saved (simulated)!"); // Placeholder
   };
 
@@ -179,16 +156,11 @@ class MyAnimation(Scene):
     }
 
     try {
-      // Create a temporary anchor element
       const a = document.createElement("a");
       a.href = videoUrl;
-
-      // Generate a filename based on project ID and timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const filename = `animation-${params.id || "export"}-${timestamp}.mp4`;
       a.download = filename;
-
-      // Append to body, click, and remove
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -198,40 +170,35 @@ class MyAnimation(Scene):
     }
   };
 
-  // Modified function to accept an optional inputPrompt and wrapped in useCallback
+  // MODIFIED: Accepts inputPrompt and currentFileContent, returns generated code
   const handleSendMessage = useCallback(
-    async (inputPrompt?: string) => {
-      // Determine which prompt to use: the argument or the state
+    async (
+      inputPrompt?: string,
+      currentFileContent?: string
+    ): Promise<string | undefined> => {
       const actualPrompt = inputPrompt?.trim() || prompt.trim();
 
       if (!actualPrompt) {
         console.warn("Attempted to send empty message.");
-        return; // Don't send empty messages
+        return undefined; // Don't send empty messages
       }
 
-      // IMPORTANT: The duplicate check inside handleSendMessage is tricky
-      // when state updates happen rapidly. Rely primarily on the useEffect
-      // logic in ProjectPage with the ref for the *initial* prompt.
-      // This check is more useful for preventing double-clicks on the chat input send button.
+      // This check is useful for preventing double-clicks on the chat input send button.
       if (!inputPrompt) {
-        // Only apply this check for manual chat messages from the chat input
         const lastMessage = conversation[conversation.length - 1];
         if (
           lastMessage?.role === "user" &&
           lastMessage?.content === actualPrompt
         ) {
           console.log("Duplicate manual chat message detected, skipping...");
-          return;
+          return undefined;
         }
       }
 
-      // Add user message to conversation immediately
       const newUserMessage = { role: "user", content: actualPrompt };
-
       // Use functional update to ensure we use the latest state
       setConversation((prevConv) => [...prevConv, newUserMessage]);
 
-      // Only clear the stateful prompt if we used the state, not the argument
       if (!inputPrompt) {
         setPrompt(""); // Clear the chat input state if user typed it manually
       }
@@ -245,7 +212,11 @@ class MyAnimation(Scene):
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ prompt: actualPrompt }),
+          // Pass current code for AI context if available
+          body: JSON.stringify({
+            prompt: actualPrompt,
+            currentCode: currentFileContent,
+          }),
         });
 
         const data = await response.json();
@@ -264,8 +235,10 @@ class MyAnimation(Scene):
               }`,
             },
           ]);
+          return undefined; // Indicate failure to caller
         } else if (data.code) {
-          setCode(data.code);
+          // DO NOT setCode here. Return the generated code to the caller (ProjectPage)
+          // so ProjectPage can update the specific selected file's content.
           setConversation((prevConv) => [
             ...prevConv,
             {
@@ -276,6 +249,7 @@ class MyAnimation(Scene):
               code: data.code,
             },
           ]);
+          return data.code; // Return the generated code
         } else {
           const assistantResponse = {
             role: "assistant",
@@ -284,6 +258,7 @@ class MyAnimation(Scene):
               "I'm having trouble generating that animation. Could you provide more details?",
           };
           setConversation((prevConv) => [...prevConv, assistantResponse]);
+          return undefined; // Indicate no code was generated
         }
       } catch (error: unknown) {
         const errorMessage =
@@ -297,11 +272,12 @@ class MyAnimation(Scene):
           },
         ]);
         setError(`Generation failed: ${errorMessage}`);
+        return undefined; // Indicate failure
       } finally {
         setIsGenerating(false);
       }
     },
-    [prompt, conversation, setConversation, setIsGenerating, setError, setCode]
+    [prompt, conversation, setConversation, setIsGenerating, setError]
   );
 
   const handleMultiSceneRun = useCallback(
@@ -347,27 +323,20 @@ class MyAnimation(Scene):
     [setIsExecuting, setError, setActiveTab, setVideoUrl]
   );
 
-  // Create a wrapper for setVideoUrl to handle undefined values
   const handleSetVideoUrl = useCallback((url: string | null) => {
     setVideoUrl(url || null);
   }, []);
-
-  // Note: The hook currently doesn't load project data based on params.id on mount.
-  // If you intend to save/load projects, you'll need to add a useEffect here
-  // to fetch project data from your backend using params.id.
 
   return {
     videoUrl,
     isExecuting,
     error,
     activeTab,
-    code,
     prompt,
     isGenerating,
     conversation,
     setVideoUrl: handleSetVideoUrl,
     setActiveTab,
-    setCode,
     setPrompt,
     handleRunAnimation,
     handleSaveCode,
