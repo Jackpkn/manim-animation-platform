@@ -1,35 +1,23 @@
+// components/project/CodeEditorSection.tsx
 import dynamic from "next/dynamic";
 import { editor } from "monaco-editor";
-import { File, X } from "lucide-react"; // Import File and X icons
-import { FileType } from "./FileExplorer"; // Import FileType
-import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useRef } from "react";
 import React from "react";
-
-const PythonFileIcon = () => (
-  <img src="/python.svg" alt="python icon" className="w-4 h-4" />
-);
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
 });
 
 interface CodeEditorSectionProps {
-  code: string;
-  onCodeChange: (code: string) => void;
-  openFiles: FileType[]; // Array of open files
-  onCloseFile: (fileId: string) => void; // Function to close file
-  selectedFile: FileType | null;
-  setSelectedFile: (file: FileType | null) => void;
+  value: string;
+  onChange: (value: string) => void;
+  language?: string;
 }
 
 const CodeEditorSection = React.memo(function CodeEditorSection({
-  code,
-  onCodeChange,
-  openFiles,
-  onCloseFile,
-  selectedFile,
-  setSelectedFile,
+  value,
+  onChange,
+  language = "python",
 }: CodeEditorSectionProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
@@ -40,6 +28,7 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
     ) => {
       editorRef.current = editor;
 
+      // Define custom dark theme
       monacoInstance.editor.defineTheme("custom-dark", {
         base: "vs-dark",
         inherit: true,
@@ -53,15 +42,26 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
           { token: "number", foreground: "E5AA73" },
         ],
         colors: {
-          "editor.background": "#101828",
-          "editor.foreground": "#C5CCD6",
-          "editor.lineHighlightBackground": "#2F353F",
-          "editor.selectionBackground": "#404859",
-          "editorCursor.foreground": "#61A0FF",
+          "editor.background": "#0f172a", 
+          "editor.foreground": "#e2e8f0", 
+          "editor.lineHighlightBackground": "#1e293b", 
+          "editor.selectionBackground": "#334155", 
+          "editorCursor.foreground": "#3b82f6",  
+          "editor.inactiveSelectionBackground": "#475569",  
+          "editorLineNumber.foreground": "#64748b",  
+          "editorLineNumber.activeForeground": "#94a3b8",  
         },
       });
 
       monacoInstance.editor.setTheme("custom-dark");
+ 
+      editor.updateOptions({
+        tabSize: 4,
+        insertSpaces: true,
+        detectIndentation: false,
+        wordWrap: "on",
+        wordWrapColumn: 120,
+      });
     },
     []
   );
@@ -72,76 +72,93 @@ const CodeEditorSection = React.memo(function CodeEditorSection({
     }
   }, []);
 
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (editorRef.current) {
+        editorRef.current.layout();
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center mb-2 overflow-x-auto mt-2">
-        {openFiles.length > 0 ? (
-          openFiles.map((file) => {
-            // Defensive check for unique IDs
-            if (!file.id) {
-              console.error("File object missing ID:", file);
-              return null; // Skip rendering this file
-            }
-            return (
-              <div
-                key={file.id}
-                className={cn(
-                  "flex items-center space-x-2 border rounded-md px-2 py-1 cursor-pointer ml-2",
-                  file.id === selectedFile?.id
-                    ? "border-orange-400 border-[1px] text-white"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700"
-                )}
-              >
-                <button
-                  onClick={() => setSelectedFile(file)}
-                  className="flex items-center space-x-1"
-                >
-                  {file.name.endsWith(".py") ? (
-                    <PythonFileIcon />
-                  ) : (
-                    <File className="h-4 w-4" />
-                  )}
-                  <span className="text-sm">{file.name}</span>
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation(); // Prevent tab click
-                    onCloseFile(file.id);
-                  }}
-                  className="hover:text-red-500"
-                  aria-label={`Close ${file.name}`}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            );
-          })
-        ) : (
-          <h2 className="text-lg font-semibold">Code Editor</h2>
-        )}
-      </div>
-      <div className="relative rounded-md overflow-hidden border border-gray-300 dark:border-gray-600 flex-1">
-        <MonacoEditor
-          height="100%"
-          language="python"
-          value={code}
-          onChange={(value) => {
-            if (value !== undefined) {
-              onCodeChange(value);
-            }
-          }}
-          onMount={handleEditorDidMount}
-          options={{
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            fontSize: 14,
-            fontFamily: "monospace",
-            lineNumbers: "on",
-            tabSize: 4,
-            automaticLayout: true,
-          }}
-        />
-      </div>
+    <div className="h-full w-full bg-slate-900 rounded-lg overflow-hidden border border-slate-700/50">
+      <MonacoEditor
+        height="100%"
+        width="100%"
+        language={language}
+        value={value}
+        onChange={(newValue) => {
+          if (newValue !== undefined) {
+            onChange(newValue);
+          }
+        }}
+        onMount={handleEditorDidMount}
+        options={{
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+          fontSize: 14,
+          fontFamily:
+            "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'SF Mono', Monaco, 'Inconsolata', 'Roboto Mono', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace",
+          lineNumbers: "on",
+          tabSize: 4,
+          automaticLayout: true,
+          wordWrap: "on",
+          wrappingIndent: "indent",
+          smoothScrolling: true,
+          cursorBlinking: "blink",
+          cursorSmoothCaretAnimation: "on",
+          renderLineHighlight: "gutter",
+          selectOnLineNumbers: true,
+          roundedSelection: false,
+          readOnly: false,
+          cursorStyle: "line",
+          mouseWheelZoom: true,
+          quickSuggestions: {
+            other: true,
+            comments: false,
+            strings: false,
+          },
+          parameterHints: {
+            enabled: true,
+          },
+          autoIndent: "full",
+          formatOnType: true,
+          formatOnPaste: true,
+          dragAndDrop: true,
+          links: true,
+          colorDecorators: true,
+
+          find: {
+            addExtraSpaceOnTop: false,
+            autoFindInSelection: "never",
+            seedSearchStringFromSelection: "always",
+          },
+          hover: {
+            enabled: true,
+            delay: 300,
+            sticky: true,
+          },
+          suggest: {
+            showKeywords: true,
+            showSnippets: true,
+            showClasses: true,
+            showFunctions: true,
+            showVariables: true,
+          },
+        }}
+        loading={
+          <div className="h-full w-full bg-slate-900 flex items-center justify-center">
+            <div className="flex items-center gap-3 text-slate-400">
+              <div className="w-6 h-6 border-2 border-slate-600 border-t-blue-500 rounded-full animate-spin" />
+              <span>Loading Editor...</span>
+            </div>
+          </div>
+        }
+      />
     </div>
   );
 });
