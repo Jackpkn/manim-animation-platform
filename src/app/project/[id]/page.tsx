@@ -25,11 +25,13 @@ import {
   Sparkles,
   ChevronRight,
   ChevronDown,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CodeEditorSection from "@/components/project/CodeEditorSection";
 import AIChatSection from "@/components/project/AIChatSection";
 import { useProject } from "@/lib/project-hook"; // Import useProject hook
+import { Input } from "@/components/ui/input";
 
 // File type interface (removed from here, now in useProject.ts)
 interface FileType {
@@ -266,7 +268,13 @@ export default function EnhancedProjectPage({
                   </label>
                 </div>
               </div>
-
+              <div className="relative ml-3 mr-3 mt-1">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search files..."
+                  className="pl-8 bg-gray-800 border-gray-700 focus-visible:ring-0"
+                />
+              </div>
               <div className="p-2 overflow-auto">
                 {renderFileTree(fileSystem)}
               </div>
