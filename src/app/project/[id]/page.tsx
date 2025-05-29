@@ -170,9 +170,11 @@ export default function EnhancedProjectPage({
           ) : (
             <>
               <div className="w-4" />
-              <File className="w-4 h-4 text-blue-400" />
+              {/* <File className="w-4 h-4 text-blue-400" /> */}
+              <img src="/python.svg"></img>
             </>
           )}
+
           <span className="flex-1 truncate">{item.name}</span>
           {item.type === "file" && item.sceneClass && (
             <div className="flex items-center gap-1">
@@ -295,7 +297,8 @@ export default function EnhancedProjectPage({
                         )}
                         onClick={() => handleFileSelect(file)}
                       >
-                        <File className="w-3 h-3" />
+                        {/* <File className="w-3 h-3" /> */}
+                        <img src="/python.svg"></img>
                         <span>{file.name}</span>
                         <button
                           onClick={(e) => {
@@ -310,7 +313,7 @@ export default function EnhancedProjectPage({
                     ))}
                   </div>
 
-                  <TabsList className="w-full justify-start px-4 pb-2 bg-transparent">
+                  <TabsList className="w-full justify-start px-4   bg-transparent">
                     <TabsTrigger
                       value="code"
                       className="gap-2 data-[state=active]:bg-slate-700"
