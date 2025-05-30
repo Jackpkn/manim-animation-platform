@@ -1,5 +1,9 @@
+// app/api/generate/route.ts (or pages/api/generate.ts)
 import { NextResponse } from "next/server";
-import { generateManimResponse } from "@/lib/gemini";
+import {
+  generateManimResponse,
+  GenerateManimProjectResponse,
+} from "@/lib/gemini"; // Adjust path
 
 export async function POST(request: Request) {
   try {
@@ -7,18 +11,31 @@ export async function POST(request: Request) {
 
     if (!prompt) {
       return NextResponse.json(
-        { error: "Prompt is required" },
+        {
+          explanation: "Prompt is required",
+          project: undefined,
+        } as GenerateManimProjectResponse,
         { status: 400 }
       );
     }
 
-    const { explanation, code } = await generateManimResponse(prompt);
+    // generateManimResponse now returns GenerateManimProjectResponse
+    const aiResponse: GenerateManimProjectResponse =
+      await generateManimResponse(prompt);
 
-    return NextResponse.json({ explanation, code });
+    // Return the full structure
+    return NextResponse.json(aiResponse);
   } catch (error) {
-    console.error("Error generating code:", error);
+    console.error("Error in /api/generate route:", error);
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to generate project structure";
     return NextResponse.json(
-      { error: "Failed to generate code" },
+      {
+        explanation: `Server error: ${message}`,
+        project: undefined,
+      } as GenerateManimProjectResponse,
       { status: 500 }
     );
   }
