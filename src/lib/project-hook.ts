@@ -3,7 +3,7 @@ import type {
   AiProject,
   AiScene,
   GenerateManimProjectResponse,
-} from "./gemini"; // Import new types
+} from "./gemini";
 
 // File type interface (updated)
 interface FileType {
@@ -12,10 +12,10 @@ interface FileType {
   type: "file" | "folder";
   content?: string;
   sceneClass?: string;
-  description?: string; // New
-  dependencies?: string[]; // New
-  duration?: number; // New
-  tags?: string[]; // New
+  description?: string;
+  dependencies?: string[];
+  duration?: number;
+  tags?: string[];
   children?: FileType[];
   isOpen?: boolean;
 }
@@ -45,7 +45,7 @@ interface UseProjectReturn {
   handleRunAnimation: () => Promise<void>;
   handleSaveCode: () => Promise<void>;
   handleDownload: () => void;
-  handleSendMessage: (inputPrompt?: string) => Promise<void>; // Return type changed
+  handleSendMessage: (inputPrompt?: string) => Promise<void>;
   handleMultiSceneRun: () => Promise<void>;
   handleFileSelect: (file: FileType) => void;
   handleCloseFile: (fileId: string) => void;
@@ -56,7 +56,7 @@ interface UseProjectReturn {
 }
 
 const STORAGE_KEY = (id: string) => `project_${id}`;
-const SCENES_FOLDER_ID = "scenes-folder"; // Define a constant for the scenes folder ID
+const SCENES_FOLDER_ID = "scenes-folder";
 
 // Initial File System Structure - ensure "scenes" folder exists
 const initialFileSystem: FileType[] = [
@@ -67,7 +67,7 @@ const initialFileSystem: FileType[] = [
     isOpen: true,
     children: [
       {
-        id: "scene-1", // Example initial file
+        id: "scene-1",
         name: "intro_example.py",
         content: `from manim import *\n\nconfig.background_color = "#1C1C1C"\n\nclass IntroExample(Scene):\n    def construct(self):\n        title = Text("Manim Project Editor", font_size=48)\n        self.play(Write(title))\n        self.wait(1)`,
         type: "file",
@@ -110,8 +110,8 @@ const updateFilesInFolder = (
 
       return {
         ...item,
-        children: [...existingChildren, ...newSceneFiles], // Or just newSceneFiles to replace entirely
-        isOpen: true, // Ensure folder is open
+        children: [...existingChildren, ...newSceneFiles],
+        isOpen: true,
       };
     } else if (item.type === "folder" && item.children) {
       return {
@@ -384,7 +384,7 @@ export function useProject(params: Promise<{ id: string }>): UseProjectReturn {
           content: data.explanation,
         };
         if (data.project) {
-          assistantMessage.project = data.project; // Store the project structure in conversation for potential display
+          assistantMessage.project = data.project;
         }
         setConversation((prevConv) => [...prevConv, assistantMessage]);
 
@@ -400,7 +400,7 @@ export function useProject(params: Promise<{ id: string }>): UseProjectReturn {
               dependencies: scene.dependencies,
               duration: scene.duration,
               tags: scene.tags,
-              isOpen: false, // Or determine based on logic
+              isOpen: false,
             })
           );
 
