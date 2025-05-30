@@ -1,165 +1,259 @@
 import axios from "axios";
-import { systemPrompt } from "./system-propmt";
+import { systemPrompt } from "./system-propmt"; // Assuming this is system-prompt.ts
 
 // Replace with your actual API key
 const API_KEY = process.env.GEMINI_API_KEY;
+// Using a model known for good JSON output and instruction following.
+// Replace with gemini-2.0-flash if that's a model you have access to and prefer.
 const API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
+
+// --- TypeScript Interfaces for AI Response ---
+export interface AiScene {
+  id: string;
+  name: string;
+  sceneClass: string;
+  description: string;
+  content: string;
+  dependencies: string[];
+  duration: number;
+  tags: string[];
+}
+
+export interface AiCombinedOutput {
+  shouldCombine: boolean;
+  transitionType: "fade" | "slide" | "none";
+  description: string;
+}
+
+export interface AiAsset {
+  type: "image" | "audio" | "data";
+  name: string; // Changed from "filename.ext" to string for flexibility
+  description: string;
+  generateInstruction: string;
+}
+
+export interface AiProject {
+  scenes: AiScene[];
+  combinedOutput: AiCombinedOutput;
+  assets: AiAsset[];
+}
+
+export interface GenerateManimProjectResponse {
+  explanation: string;
+  project?: AiProject; // Project can be undefined on error or if AI doesn't provide it
+}
+
+function postProcessSceneCode(code: string): string {
+  let processedCode = code.trim();
+  const fromManimImport = "from manim import *";
+
+  if (!processedCode.includes(fromManimImport)) {
+    processedCode = `${fromManimImport}\n\n${processedCode}`;
+  }
+
+  if (!processedCode.includes("config.background_color")) {
+    // Try to insert after imports
+    const importRegex = /^(from manim import .*?\n|import .*?\n)+/m;
+    if (importRegex.test(processedCode)) {
+      processedCode = processedCode.replace(
+        importRegex,
+        `$&\n# Set dark background\nconfig.background_color = "#1C1C1C"\n`
+      );
+    } else {
+      // Prepend if no imports found
+      processedCode = `# Set dark background\nconfig.background_color = "#1C1C1C"\n\n${processedCode}`;
+    }
+  }
+  return processedCode;
+}
 
 export async function generateManimResponse(
   prompt: string
-): Promise<{ explanation: string; code: string }> {
+): Promise<GenerateManimProjectResponse> {
   if (!API_KEY) {
-    // Log error server-side, but return a user-friendly message
     console.error("GEMINI_API_KEY environment variable is not set.");
     return {
-      explanation: "Error: API key is not configured.",
-      code: "# API key missing\n# Please set the GEMINI_API_KEY environment variable.",
+      explanation: "Error: API key is not configured. Please contact support.",
+      project: undefined,
     };
   }
+
+  const fullPrompt = `${systemPrompt}\n\nUser request: ${prompt}`;
 
   try {
     const response = await axios.post(
       `${API_URL}?key=${API_KEY}`,
       {
-        contents: [
-          {
-            parts: [
-              {
-                text: `${systemPrompt}\n\nUser request: ${prompt}`,
-              },
-            ],
-          },
-        ],
+        contents: [{ parts: [{ text: fullPrompt }] }],
+        // It's highly recommended to use this with models that support it
+        // to enforce JSON output, if your chosen model does.
+        // generationConfig: {
+        //   response_mime_type: "application/json",
+        // }
       },
       {
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       }
     );
 
-    // Basic validation for response structure
-    if (
-      !response.data ||
-      !response.data.candidates ||
-      !response.data.candidates[0] ||
-      !response.data.candidates[0].content ||
-      !response.data.candidates[0].content.parts ||
-      !response.data.candidates[0].content.parts[0] ||
-      !response.data.candidates[0].content.parts[0].text
-    ) {
+    if (!response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
       console.error(
         "Invalid or empty response structure from Gemini API:",
-        response.data
+        JSON.stringify(response.data, null, 2)
       );
-
       return {
-        explanation: "Error: Invalid response received from AI.",
-        code: "",
+        explanation: "Error: Invalid or incomplete response received from AI.",
+        project: undefined,
       };
     }
 
     const generatedText = response.data.candidates[0].content.parts[0].text;
-    let explanation = "";
-    let code = "";
-    const defaultExplanation = "Here is the generated code:";
+    let cleanedJsonText = generatedText.trim();
 
-    // --- Parsing Logic ---
-
-    // First, look for the CODE block using the markers and the code block syntax
-    // This regex looks for [CODE] followed by ```python or ```, captures the content inside,
-    // and goes up to the closing ```
-    const strictCodeBlockRegex = /\[CODE\]\s*```(?:python)?\n([\s\S]*?)\n```/;
-    const strictCodeMatch = generatedText.match(strictCodeBlockRegex);
-    const fallbackCodeBlockRegex = /```(?:python)?\n([\s\S]*?)\n```/;
-    const fallbackCodeMatch = generatedText.match(fallbackCodeBlockRegex);
-
-    if (strictCodeMatch && strictCodeMatch[1]) {
-      // Strict format [CODE] + ```...``` found
-      code = strictCodeMatch[1].trim();
-      const explanationTextBeforeCode = generatedText
-        .substring(0, strictCodeMatch.index)
-        .trim();
-
-      const explanationMarkerRegex = /\[EXPLANATION\]([\s\S]*)/;
-      const explanationMatch = explanationTextBeforeCode.match(
-        explanationMarkerRegex
-      );
-
-      if (explanationMatch && explanationMatch[1]) {
-        // Found [EXPLANATION] before the code block
-        explanation = explanationMatch[1].trim();
-      } else {
-        // No [EXPLANATION] marker found before the code block,
-        // use the text before the code block as explanation, or default
-        console.warn(
-          "AI response contained code block but missing or misplaced [EXPLANATION] marker."
-        );
-        explanation = explanationTextBeforeCode || defaultExplanation;
+    // Remove markdown ```json ... ``` wrapping if present
+    if (cleanedJsonText.startsWith("```json")) {
+      cleanedJsonText = cleanedJsonText.substring(7);
+      if (cleanedJsonText.endsWith("```")) {
+        cleanedJsonText = cleanedJsonText.slice(0, -3);
       }
-    } else {
-      // Strict [CODE] + ```...``` format not found.
-      // Fallback: Look for *any* markdown code block (```python or ```)
-      const fallbackCodeBlockRegex = /```(?:python)?\n([\s\S]*?)\n```/;
-      const fallbackCodeMatch = generatedText.match(fallbackCodeBlockRegex);
+    } else if (cleanedJsonText.startsWith("```")) {
+      cleanedJsonText = cleanedJsonText.substring(3);
+      if (cleanedJsonText.endsWith("```")) {
+        cleanedJsonText = cleanedJsonText.slice(0, -3);
+      }
+    }
+    cleanedJsonText = cleanedJsonText.trim();
 
-      if (fallbackCodeMatch && fallbackCodeMatch[1]) {
-        // Found a code block, even if not preceded by [CODE] marker
-        code = fallbackCodeMatch[1].trim();
+    try {
+      const parsedResponse = JSON.parse(cleanedJsonText) as Partial<
+        GenerateManimProjectResponse & { project: Partial<AiProject> }
+      >;
 
-        // Assume text *before* the code block is the explanation
-        const textBeforeCode = generatedText
-          .substring(0, fallbackCodeMatch.index)
-          .trim();
-        // Clean up potential [EXPLANATION] or [CODE] markers if they exist but were not in the strict format
-        explanation = textBeforeCode
-          .replace(/\[EXPLANATION\]/g, "")
-          .replace(/\[CODE\]/g, "")
-          .trim();
+      if (
+        !parsedResponse.explanation ||
+        typeof parsedResponse.explanation !== "string"
+      ) {
+        console.error(
+          "AI response JSON missing or has invalid 'explanation' field.",
+          parsedResponse
+        );
+        return {
+          explanation: "Error: AI response is missing a valid explanation.",
+          project: undefined,
+        };
+      }
 
-        if (!explanation) {
-          explanation = defaultExplanation;
+      if (
+        !parsedResponse.project ||
+        typeof parsedResponse.project !== "object"
+      ) {
+        console.warn(
+          "AI response JSON missing 'project' field. Explanation provided without project details.",
+          parsedResponse.explanation
+        );
+        // Return explanation even if project is missing, as AI might just be conversing.
+        return { explanation: parsedResponse.explanation, project: undefined };
+      }
+
+      const project = parsedResponse.project;
+
+      // Validate project structure (basic)
+      if (!Array.isArray(project.scenes)) {
+        console.error(
+          "AI response project missing or has invalid 'scenes' array.",
+          project
+        );
+        return {
+          explanation:
+            parsedResponse.explanation +
+            "\n\nError: Project data from AI is malformed (scenes).",
+          project: undefined,
+        };
+      }
+      if (
+        typeof project.combinedOutput !== "object" ||
+        project.combinedOutput === null
+      ) {
+        console.error(
+          "AI response project missing or has invalid 'combinedOutput' object.",
+          project
+        );
+        return {
+          explanation:
+            parsedResponse.explanation +
+            "\n\nError: Project data from AI is malformed (combinedOutput).",
+          project: undefined,
+        };
+      }
+      if (!Array.isArray(project.assets)) {
+        console.error(
+          "AI response project missing or has invalid 'assets' array.",
+          project
+        );
+        return {
+          explanation:
+            parsedResponse.explanation +
+            "\n\nError: Project data from AI is malformed (assets).",
+          project: undefined,
+        };
+      }
+
+      // Post-process scene content
+      const processedScenes = project.scenes.map((scene: Partial<AiScene>) => {
+        if (typeof scene.content !== "string") {
+          console.warn(
+            `Scene ${
+              scene.id || "unknown"
+            } has missing or invalid content. Skipping content processing.`
+          );
+          return {
+            ...scene,
+            content: "// Error: AI provided no code for this scene.",
+          } as AiScene;
         }
-        console.warn(
-          "AI response contained code block but not in strict [EXPLANATION][CODE] format."
-        );
-      } else {
-        console.warn("AI response did not contain any markdown code block.");
-        code = "";
-        explanation =
-          generatedText.trim() || "AI did not return any code or explanation.";
-      }
-    }
+        // Ensure all fields are present, providing defaults if necessary, or throw
+        return {
+          id: scene.id || `generated-scene-${Date.now()}-${Math.random()}`,
+          name: scene.name || "untitled_scene.py",
+          sceneClass: scene.sceneClass || "DefaultScene",
+          description: scene.description || "No description provided.",
+          content: postProcessSceneCode(scene.content),
+          dependencies: Array.isArray(scene.dependencies)
+            ? scene.dependencies
+            : [],
+          duration: typeof scene.duration === "number" ? scene.duration : 0,
+          tags: Array.isArray(scene.tags) ? scene.tags : [],
+        } as AiScene;
+      });
 
-    // --- End Parsing Logic ---
+      const validatedProject: AiProject = {
+        scenes: processedScenes,
+        combinedOutput: project.combinedOutput as AiCombinedOutput, // Add more validation if needed
+        assets: project.assets as AiAsset[], // Add more validation if needed
+      };
 
-    if (code.trim() && !code.includes("config.background_color")) {
-      // Add imports only if they are missing and code is not empty
-      const fromManimImport = "from manim import *";
-      if (!code.includes(fromManimImport)) {
-        code = `${fromManimImport}\n\n${code}`;
-      }
-      code = code.replace(/^from manim import \*/m, "").trim();
-      code = `${fromManimImport}\n\n# Set dark background\nconfig.background_color = "#1C1C1C"\n\n${code}`;
-    } else if (!code.trim() && (strictCodeMatch || fallbackCodeMatch)) {
-      console.warn("AI returned an empty code block after markers.");
-      code = "";
-      if (!explanation || explanation === defaultExplanation) {
-        explanation = "AI returned code block markers but no code inside.";
-      }
+      return {
+        explanation: parsedResponse.explanation,
+        project: validatedProject,
+      };
+    } catch (parseError) {
+      console.error("Failed to parse AI response as JSON:", parseError);
+      console.error("Raw AI response text that failed parsing:", generatedText);
+      return {
+        explanation:
+          "Error: AI returned a response that was not valid JSON. The raw response might be in the server console. Please try rephrasing your request or try again later.",
+        // Optionally include the malformed text in the code block for debugging by user if desired.
+        project: undefined,
+      };
     }
-
-    if (!explanation && code.trim()) {
-      explanation = defaultExplanation;
-    }
-    return { explanation, code };
   } catch (error) {
     console.error("Error in generateManimResponse:", error);
     let errorMessage = "Failed to generate response due to an API error.";
     if (axios.isAxiosError(error)) {
-      errorMessage = `Gemini API error: ${error.response?.data?.error?.message || error.message
-        }`;
+      errorMessage = `Gemini API error: ${
+        error.response?.data?.error?.message || error.message
+      }`;
       console.error(
         "Axios error details:",
         error.response?.data || error.message
@@ -167,18 +261,24 @@ export async function generateManimResponse(
     } else if (error instanceof Error) {
       errorMessage = `Generation error: ${error.message}`;
     }
-    return { explanation: errorMessage, code: "" };
+    return { explanation: errorMessage, project: undefined };
   }
 }
 
-// New function to enhance the prompt
+// enhancePrompt function remains unchanged as its purpose is separate.
 export async function enhancePrompt(prompt: string): Promise<string> {
-  console.log("API Key available:", !!API_KEY); // Log if API key exists
-  console.log("API Key length:", API_KEY?.length); // Log API key length (without exposing the key)
+  // ... (existing enhancePrompt implementation)
+  console.log("API Key available:", !!API_KEY);
+  console.log(
+    "API Key length (indicative):",
+    API_KEY ? String(API_KEY).length : 0
+  );
 
   if (!API_KEY) {
-    console.error("GEMINI_API_KEY environment variable is not set.");
-    throw new Error("API key is not configured");
+    console.error(
+      "GEMINI_API_KEY environment variable is not set for enhancePrompt."
+    );
+    throw new Error("API key is not configured for prompt enhancement");
   }
 
   const enhancementPrompt = `You are an expert prompt engineer. Your goal is to take a user-provided prompt and make it more specific, descriptive, and detailed. The prompt is about creating an animation using the Manim library in Python. Focus on adding details that would help the AI generate more accurate and visually appealing Manim code. Return ONLY the enhanced prompt, nothing else. Do not explain. User Prompt: ${prompt}`;
@@ -188,68 +288,47 @@ export async function enhancePrompt(prompt: string): Promise<string> {
     const response = await axios.post(
       `${API_URL}?key=${API_KEY}`,
       {
-        contents: [
-          {
-            parts: [
-              {
-                text: enhancementPrompt,
-              },
-            ],
-          },
-        ],
+        contents: [{ parts: [{ text: enhancementPrompt }] }],
       },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
+      { headers: { "Content-Type": "application/json" } }
     );
 
-    console.log("API Response received:", {
+    console.log("API Response for enhancement received:", {
       hasData: !!response.data,
       hasCandidates: !!response.data?.candidates,
       candidateCount: response.data?.candidates?.length,
     });
 
-    if (
-      !response.data ||
-      !response.data.candidates ||
-      !response.data.candidates[0] ||
-      !response.data.candidates[0].content ||
-      !response.data.candidates[0].content.parts ||
-      !response.data.candidates[0].content.parts[0] ||
-      !response.data.candidates[0].content.parts[0].text
-    ) {
+    if (!response.data?.candidates?.[0]?.content?.parts?.[0]?.text) {
       console.error(
-        "Invalid or empty response structure from Gemini API:",
+        "Invalid or empty response structure from Gemini API for enhancement:",
         response.data
       );
-      throw new Error("Invalid response received from AI");
+      throw new Error("Invalid response received from AI during enhancement");
     }
 
-    const enhancedText = response.data.candidates[0].content.parts[0].text.trim();
-
-    // If the response is empty or just whitespace
+    const enhancedText =
+      response.data.candidates[0].content.parts[0].text.trim();
     if (!enhancedText) {
-      throw new Error("AI returned an empty response");
+      console.warn("AI returned an empty enhanced prompt, using original.");
+      return prompt;
     }
-
     return enhancedText;
   } catch (error) {
     console.error("Error enhancing prompt:", error);
     if (axios.isAxiosError(error)) {
-      console.error("Axios error details:", {
+      console.error("Axios error details (enhancement):", {
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
       });
       throw new Error(
-        `API error: ${error.response?.data?.error?.message || error.message}`
+        `API error during enhancement: ${
+          error.response?.data?.error?.message || error.message
+        }`
       );
-    } else if (error instanceof Error) {
-      throw error;
-    } else {
-      throw new Error("Failed to enhance prompt");
     }
+    console.warn("Failed to enhance prompt, returning original prompt.");
+    return prompt;
   }
 }
