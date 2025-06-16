@@ -1,4 +1,5 @@
 import { AnimationControls, motion } from "framer-motion";
+import { PlayCircle } from "lucide-react";
 
 const DemoAnimationSection = ({
   controls,
@@ -6,100 +7,96 @@ const DemoAnimationSection = ({
   controls: AnimationControls;
 }) => {
   return (
-    <motion.div
-      initial="hidden"
-      animate={controls}
-      variants={{
-        visible: { opacity: 1, scale: 1 },
-        hidden: { opacity: 0, scale: 0.8 },
-      }}
-      transition={{ duration: 0.7, delay: 0.3 }}
-      className="relative max-w-7xl mx-auto h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] mb-12 rounded-xl overflow-hidden"
-    >
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl border border-white/10">
-        <div className="absolute inset-0 flex items-center justify-center">
-          {/* Mathematical animation placeholder */}
-          <svg
-            width="160"
-            height="160"
-            viewBox="0 0 160 160"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="opacity-60"
-          >
-            <circle
-              cx="80"
-              cy="80"
-              r="60"
-              stroke="white"
-              strokeWidth="2"
-              strokeDasharray="6 6"
-              className="animate-spin"
-              style={{ animationDuration: "15s" }}
-            />
-            <circle
-              cx="80"
-              cy="80"
-              r="40"
-              stroke="#8B5CF6"
-              strokeWidth="2"
-              className="animate-spin"
-              style={{
-                animationDuration: "10s",
-                animationDirection: "reverse",
-              }}
-            />
-            <circle
-              cx="80"
-              cy="80"
-              r="20"
-              stroke="#3B82F6"
-              strokeWidth="2"
-              className="animate-spin"
-              style={{ animationDuration: "5s" }}
-            />
-            <line
-              x1="20"
-              y1="80"
-              x2="140"
-              y2="80"
-              stroke="white"
-              strokeWidth="1"
-              strokeDasharray="2 2"
-            />
-            <line
-              x1="80"
-              y1="20"
-              x2="80"
-              y2="140"
-              stroke="white"
-              strokeWidth="1"
-              strokeDasharray="2 2"
-            />
-          </svg>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black to-transparent"></div>
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-          <button className="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-full hover:bg-white/20 transition-colors">
+    <section className="py-16 px-4">
+      <div className="max-w-7xl mx-auto flex flex-col items-center text-center">
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.1, ease: "easeOut" }}
+          viewport={{ once: true }}
+          className="text-4xl md:text-5xl font-bold mb-4"
+        >
+          See it in <span className="text-blue-400">Action</span>
+        </motion.h2>
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
+          viewport={{ once: true }}
+          className="text-lg text-gray-400 max-w-2xl mb-12"
+        >
+          Our AI interprets your prompts to generate fluid, accurate, and
+          insightful animations of mathematical ideas.
+        </motion.p>
+
+        <motion.div
+          initial="hidden"
+          animate={controls}
+          variants={{
+            visible: { opacity: 1, scale: 1, y: 0 },
+            hidden: { opacity: 0, scale: 0.9, y: 50 },
+          }}
+          transition={{ duration: 0.7, delay: 0.3, ease: "easeOut" }}
+          className="relative w-full h-[400px] sm:h-[500px] md:h-[600px] p-2 rounded-2xl bg-white/5 border border-white/10 shadow-2xl shadow-blue-900/20"
+        >
+          {/* Background Aurora Glows */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-3xl opacity-50 animate-pulse"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/30 rounded-full blur-3xl opacity-50 animate-pulse animation-delay-2000"></div>
+
+          <div className="relative w-full h-full rounded-xl overflow-hidden backdrop-blur-sm flex items-center justify-center">
+            {/* Upgraded SVG Placeholder */}
             <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="w-5 h-5"
+              width="80%"
+              height="80%"
+              viewBox="0 0 400 200"
+              className="opacity-80"
             >
+              <defs>
+                <linearGradient id="sineGradient" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#3B82F6" />
+                  <stop offset="100%" stopColor="#8B5CF6" />
+                </linearGradient>
+              </defs>
+              {/* Grid Lines */}
               <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"
+                d="M0 100 H400 M200 0 V200"
+                stroke="white"
+                strokeWidth="0.5"
+                strokeOpacity="0.2"
               />
+              {/* Sine Wave */}
+              <path
+                d="M 0 100 C 50 20, 150 20, 200 100 S 350 180, 400 100"
+                stroke="url(#sineGradient)"
+                strokeWidth="2.5"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="600"
+                className="animate-draw"
+              />
+              <style>{`
+                .animate-draw {
+                  animation: draw 4s ease-in-out infinite alternate;
+                }
+                @keyframes draw {
+                  from { stroke-dashoffset: 600; }
+                  to { stroke-dashoffset: 0; }
+                }
+              `}</style>
             </svg>
-            Watch Demo
-          </button>
-        </div>
+          </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-5 py-3 bg-white/10 backdrop-blur-md rounded-full hover:bg-white/20 transition-colors duration-300 text-gray-200"
+          >
+            <PlayCircle className="w-5 h-5 text-blue-400" />
+            Play Full Demo
+          </motion.button>
+        </motion.div>
       </div>
-    </motion.div>
+    </section>
   );
 };
+
 export default DemoAnimationSection;
