@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { PlusCircle, FileVideo, Edit, Film, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -33,7 +32,6 @@ export function SceneSidebar({
 }: SceneSidebarProps) {
   const [newSceneName, setNewSceneName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const pathname = usePathname();
 
   const handleAddScene = () => {
     if (newSceneName.trim()) {
@@ -78,9 +76,8 @@ export function SceneSidebar({
         {scenes.map((scene) => (
           <Link key={scene.id} href={`/editor/${scene.id}`} className="block">
             <Card
-              className={`p-3 hover:bg-gray-50 transition-colors ${
-                scene.id === activeSceneId ? "bg-blue-50 border-blue-200" : ""
-              }`}
+              className={`p-3 hover:bg-gray-50 transition-colors ${scene.id === activeSceneId ? "bg-blue-50 border-blue-200" : ""
+                }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center">

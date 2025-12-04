@@ -8,49 +8,30 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
-  File,
-  X,
   Play,
   Download,
   Save,
-  Plus,
-  Folder,
-  FolderOpen,
-  Code,
-  Eye,
   MessageSquare,
   Settings,
   Layers,
   Video,
   Sparkles,
-  ChevronRight,
-  ChevronDown,
-  Search,
+  Film,
+  Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CodeEditorSection from "@/components/project/CodeEditorSection";
 import AIChatSection from "@/components/project/AIChatSection";
-import { useProject } from "@/lib/project-hook"; // Import useProject hook
-import { Input } from "@/components/ui/input";
-
-// File type interface (removed from here, now in useProject.ts)
-interface FileType {
-  // Re-declare for local type usage, or import from types.ts if available
-  id: string;
-  name: string;
-  type: "file" | "folder";
-  content?: string;
-  sceneClass?: string;
-  children?: FileType[];
-  isOpen?: boolean;
-}
+import SceneList from "@/components/project/SceneList";
+import { useProject } from "@/lib/project-hook";
+import Image from "next/image";
 
 // Chat message component
 const ChatMessage = ({
   message,
   isUser,
 }: {
-  message: any;
+  message: { content: string; code?: string; role: string };
   isUser: boolean;
 }) => {
   return (
@@ -87,13 +68,11 @@ const ChatMessage = ({
   );
 };
 
-// Enhanced Project Page Component
 export default function EnhancedProjectPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  // Destructure states and functions from the useProject hook
   const {
     videoUrl,
     isExecuting,
@@ -103,131 +82,90 @@ export default function EnhancedProjectPage({
     isGenerating,
     conversation,
     fileSystem,
-    openFiles,
     selectedFile,
     selectedScenes,
     combineScenes,
     setActiveTab,
     setPrompt,
-    handleRunAnimation, // Now handles both single and multi-scene
+    handleRunAnimation,
     handleSaveCode,
     handleDownload,
-    handleSendMessage, // Now uses selectedFile.content internally
-    handleMultiSceneRun, // This now calls handleRunAnimation internally
+    handleSendMessage,
     handleFileSelect,
-    handleCloseFile,
     handleCodeChange,
-    toggleFolder,
     setSelectedScenes,
     setCombineScenes,
   } = useProject(params);
 
-  // handleRunAnimationClick is simplified now
   const handleRunAnimationClick = async () => {
     await handleRunAnimation();
   };
 
   const handleSendMessageClick = async () => {
-    // handleSendMessage now internally uses selectedFile.content
-    await handleSendMessage(); // No arguments needed here
+    await handleSendMessage();
   };
 
   const handleUseCode = useCallback(
     (code: string) => {
-      // Calls the handleCodeChange from the hook
       handleCodeChange(code);
     },
     [handleCodeChange]
   );
 
-  // renderFileTree remains in the component as it's JSX rendering logic
-  const renderFileTree = (items: FileType[], depth = 0): React.ReactNode => {
-    return items.map((item) => (
-      <div key={item.id}>
-        <div
-          className={cn(
-            "flex items-center gap-2 px-2 py-1.5 hover:bg-slate-700/50 cursor-pointer text-sm rounded-md mx-1",
-            selectedFile?.id === item.id && "bg-slate-600 text-white",
-            `ml-${depth * 4}`
-          )}
-          onClick={() =>
-            item.type === "file"
-              ? handleFileSelect(item)
-              : toggleFolder(item.id)
-          }
-        >
-          {item.type === "folder" ? (
-            <>
-              {item.isOpen ? (
-                <ChevronDown className="w-4 h-4" />
-              ) : (
-                <ChevronRight className="w-4 h-4" />
-              )}
-              {item.isOpen ? (
-                <FolderOpen className="w-4 h-4" />
-              ) : (
-                <Folder className="w-4 h-4" />
-              )}
-            </>
-          ) : (
-            <>
-              <div className="w-4" />
-              {/* <File className="w-4 h-4 text-blue-400" /> */}
-              <img src="/python.svg"></img>
-            </>
-          )}
-
-          <span className="flex-1 truncate">{item.name}</span>
-          {item.type === "file" && item.sceneClass && (
-            <div className="flex items-center gap-1">
-              <input
-                type="checkbox"
-                checked={selectedScenes.includes(item.id)}
-                onChange={(e) => {
-                  e.stopPropagation(); // Prevent file selection when checking
-                  setSelectedScenes((prev) =>
-                    e.target.checked
-                      ? [...prev, item.id]
-                      : prev.filter((id) => id !== item.id)
-                  );
-                }}
-                className="w-3 h-3"
-              />
-              <Layers className="w-3 h-3 text-purple-400" />
-            </div>
-          )}
-        </div>
-        {item.type === "folder" && item.isOpen && item.children && (
-          <div className="ml-4">{renderFileTree(item.children, depth + 1)}</div>
-        )}
-      </div>
-    ));
+  const handleToggleSceneSelection = (fileId: string, selected: boolean) => {
+    setSelectedScenes((prev) =>
+      selected
+        ? [...prev, fileId]
+        : prev.filter((id) => id !== fileId)
+    );
   };
 
+  // Extract scenes from file system
+  const scenesFolder = fileSystem.find((f) => f.id === "scenes-folder");
+  const sceneFiles = scenesFolder?.children || [];
+
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col">
+    <div className="h-screen bg-slate-950 text-white flex flex-col font-sans selection:bg-blue-500/30">
       {/* Header */}
-      <div className="h-14 border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-between px-6">
+      <div className="h-14 border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm flex items-center justify-between px-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <Sparkles className="w-5 h-5" />
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <Sparkles className="w-4 h-4 text-white" />
           </div>
-          <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-            Manim Studio
+          <h1 className="text-lg font-bold tracking-tight">
+            <span className="text-slate-100">Manim</span>
+            <span className="text-blue-400">Studio</span>
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-slate-900 rounded-lg border border-slate-800 p-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className={cn(
+                "h-7 px-3 text-xs gap-2 hover:bg-slate-800",
+                combineScenes && "bg-blue-600/10 text-blue-400 hover:bg-blue-600/20"
+              )}
+              onClick={() => setCombineScenes(!combineScenes)}
+            >
+              <Film className="w-3.5 h-3.5" />
+              {combineScenes ? "Combine Mode: ON" : "Combine Mode: OFF"}
+            </Button>
+          </div>
+
+          <div className="h-6 w-px bg-slate-800 mx-2" />
+
           <Button
             size="sm"
             variant="ghost"
-            className="gap-2"
+            className="gap-2 text-slate-400 hover:text-white hover:bg-slate-800"
             onClick={handleSaveCode}
           >
             <Save className="w-4 h-4" />
             Save
           </Button>
-          <Button size="sm" variant="ghost" className="gap-2">
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-white hover:bg-slate-800">
             <Settings className="w-4 h-4" />
           </Button>
         </div>
@@ -236,257 +174,200 @@ export default function EnhancedProjectPage({
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup direction="horizontal">
-          {/* File Explorer */}
-          <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
-            <div className="h-full bg-slate-900/50 border-r border-slate-700/50">
-              <div className="p-4 border-b border-slate-700/50">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-slate-300">
-                    Explorer
-                  </h3>
-                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                    <Plus className="w-3 h-3" />
-                  </Button>
-                </div>
-
-                {/* Multi-Scene Controls */}
-                <div className="space-y-2 mb-4 p-2 bg-slate-800/50 rounded-lg border border-slate-700/30">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Multi-Scene</span>
-                    <span className="text-purple-400">
-                      {selectedScenes.length} selected
-                    </span>
-                  </div>
-                  <label className="flex items-center gap-2 text-xs">
-                    <input
-                      type="checkbox"
-                      checked={combineScenes}
-                      onChange={(e) => setCombineScenes(e.target.checked)}
-                      className="w-3 h-3"
-                    />
-                    <span className="text-slate-300">Combine videos</span>
-                  </label>
-                </div>
+          {/* Left Sidebar: Scene List & Assets */}
+          <ResizablePanel defaultSize={20} minSize={15} maxSize={30} className="bg-slate-900 border-r border-slate-800">
+            <div className="h-full flex flex-col">
+              <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                <h3 className="font-semibold text-sm text-slate-200 flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-blue-400" />
+                  Scenes
+                </h3>
+                <span className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">
+                  {sceneFiles.length}
+                </span>
               </div>
-              <div className="relative ml-3 mr-3 mt-1">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search files..."
-                  className="pl-8 bg-gray-800 border-gray-700 focus-visible:ring-0"
+
+              <div className="flex-1 overflow-y-auto">
+                <SceneList
+                  files={sceneFiles}
+                  selectedFileId={selectedFile?.id || null}
+                  selectedScenes={selectedScenes}
+                  onSelectFile={handleFileSelect}
+                  onToggleSceneSelection={handleToggleSceneSelection}
+                  onRunScene={(file) => {
+                    handleFileSelect(file);
+                    // We need to ensure the state updates before running, 
+                    // but for now let's just select it. The user can hit run.
+                    // Ideally we'd have a direct "run this file" action.
+                  }}
                 />
               </div>
-              <div className="p-2 overflow-auto">
-                {renderFileTree(fileSystem)}
+
+              {/* Generate New Scene Button */}
+              <div className="p-4 border-t border-slate-800 bg-slate-900/50">
+                <Button
+                  className="w-full gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg shadow-blue-900/20"
+                  onClick={() => {
+                    // Focus chat input
+                    const chatInput = document.querySelector('textarea[placeholder="Ask AI to change code..."]') as HTMLTextAreaElement;
+                    if (chatInput) chatInput.focus();
+                  }}
+                >
+                  <Wand2 className="w-4 h-4" />
+                  New Scene with AI
+                </Button>
               </div>
             </div>
           </ResizablePanel>
 
-          <ResizableHandle className="w-1 bg-slate-700/30 hover:bg-slate-600/50 transition-colors" />
+          <ResizableHandle className="w-1 bg-slate-800 hover:bg-blue-500/50 transition-colors" />
 
-          {/* Code Editor & Preview */}
-          <ResizablePanel defaultSize={45} minSize={30}>
-            <div className="h-full bg-slate-900/30">
-              <Tabs
-                value={activeTab}
-                onValueChange={setActiveTab}
-                className="h-full flex flex-col"
-              >
-                {/* File Tabs */}
-                <div className="border-b border-slate-700/50 bg-slate-900/50">
-                  <div className="flex items-center overflow-x-auto px-4 py-2 gap-1">
-                    {openFiles.map((file) => (
-                      <div
-                        key={file.id}
-                        className={cn(
-                          "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all cursor-pointer min-w-max",
-                          selectedFile?.id === file.id
-                            ? "bg-slate-700 text-white shadow-md"
-                            : "bg-slate-800/50 text-slate-300 hover:bg-slate-700/50"
-                        )}
-                        onClick={() => handleFileSelect(file)}
-                      >
-                        {/* <File className="w-3 h-3" /> */}
-                        <img src="/python.svg"></img>
-                        <span>{file.name}</span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCloseFile(file.id);
-                          }}
-                          className="hover:text-red-400 transition-colors"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+          {/* Center: Code Editor & Preview */}
+          <ResizablePanel defaultSize={50} minSize={30} className="bg-slate-950">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="h-full flex flex-col"
+            >
+              <div className="border-b border-slate-800 bg-slate-900/30 px-4">
+                <TabsList className="bg-transparent h-12 w-full justify-start gap-6 p-0">
+                  <TabsTrigger
+                    value="code"
+                    className="data-[state=active]:bg-transparent data-[state=active]:text-blue-400 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-400 rounded-none px-0 pb-3 pt-3 gap-2 text-slate-400 hover:text-slate-200 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Image src="/python.svg" className="opacity-70" alt="python" width={16} height={16} />
+                      Code Editor
+                    </div>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="preview"
+                    className="data-[state=active]:bg-transparent data-[state=active]:text-purple-400 data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-purple-400 rounded-none px-0 pb-3 pt-3 gap-2 text-slate-400 hover:text-slate-200 transition-colors"
+                  >
+                    <Video className="w-4 h-4" />
+                    Preview
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
-                  <TabsList className="w-full justify-start px-4   bg-transparent">
-                    <TabsTrigger
-                      value="code"
-                      className="gap-2 data-[state=active]:bg-slate-700"
-                    >
-                      <Code className="w-4 h-4" />
-                      Editor
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="preview"
-                      className="gap-2 data-[state=active]:bg-slate-700"
-                    >
-                      <Eye className="w-4 h-4" />
-                      Preview
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-
-                <TabsContent value="code" className="flex-1 flex flex-col m-0">
-                  <div className="flex-1 overflow-hidden">
-                    <CodeEditorSection
-                      value={selectedFile?.content || ""}
-                      onChange={handleCodeChange}
-                      language="python"
-                    />
-                  </div>
-
-                  {/* Action Bar */}
-                  <div className="p-4 border-t border-slate-700/50 bg-slate-900/50 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm text-slate-400">
-                      {selectedScenes.length > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Layers className="w-4 h-4" />
-                          {selectedScenes.length} scenes selected
-                        </span>
-                      )}
+              <TabsContent value="code" className="flex-1 flex flex-col m-0 overflow-hidden relative">
+                {selectedFile ? (
+                  <>
+                    <div className="flex-1 overflow-hidden">
+                      <CodeEditorSection
+                        code={selectedFile.content || ""}
+                        onCodeChange={handleCodeChange}
+                        language="python"
+                      />
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    {/* Floating Run Button */}
+                    <div className="absolute bottom-6 right-6 z-10">
                       <Button
                         onClick={handleRunAnimationClick}
-                        disabled={
-                          isExecuting ||
-                          (!selectedFile && selectedScenes.length === 0)
-                        }
+                        disabled={isExecuting}
+                        size="lg"
                         className={cn(
-                          "gap-2 transition-all",
-                          selectedScenes.length > 0
-                            ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                            : "bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+                          "gap-2 shadow-xl transition-all duration-300 rounded-full pl-6 pr-8 h-14",
+                          selectedScenes.length > 1
+                            ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 hover:scale-105"
+                            : "bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 hover:scale-105"
                         )}
                       >
                         {isExecuting ? (
                           <>
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            Running...
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span className="font-semibold">Rendering...</span>
                           </>
                         ) : (
                           <>
-                            <Play className="w-4 h-4" />
-                            {selectedScenes.length > 0
-                              ? "Run Scenes"
-                              : "Run Animation"}
+                            <Play className="w-5 h-5 fill-current" />
+                            <div className="flex flex-col items-start text-xs">
+                              <span className="font-bold text-sm">
+                                {selectedScenes.length > 1 ? "Render Sequence" : "Render Scene"}
+                              </span>
+                              <span className="opacity-80 font-normal">
+                                {selectedScenes.length > 1 ? `${selectedScenes.length} scenes selected` : "Current scene"}
+                              </span>
+                            </div>
                           </>
                         )}
                       </Button>
                     </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="preview" className="flex-1 m-0 p-6">
-                  <div className="h-full bg-slate-800/30 rounded-xl border border-slate-700/30 flex items-center justify-center">
-                    {isExecuting ? (
-                      <div className="text-center space-y-4">
-                        <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto" />
-                        <p className="text-slate-300">
-                          Generating animation...
-                        </p>
-                      </div>
-                    ) : videoUrl ? (
-                      <div className="w-full h-full flex flex-col">
-                        <video
-                          src={videoUrl}
-                          controls
-                          className="flex-1 w-full rounded-lg"
-                        />
-                        <div className="pt-4 flex justify-center">
-                          <Button
-                            className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600"
-                            onClick={handleDownload}
-                          >
-                            <Download className="w-4 h-4" />
-                            Download Video
-                          </Button>
-                        </div>
-                      </div>
-                    ) : error ? (
-                      <div className="text-center space-y-2">
-                        <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mx-auto">
-                          <X className="w-6 h-6 text-red-400" />
-                        </div>
-                        <p className="text-red-400">{error}</p>
-                      </div>
-                    ) : (
-                      <div className="text-center space-y-4">
-                        <Video className="w-16 h-16 text-slate-500 mx-auto" />
-                        <div>
-                          <p className="text-slate-300 mb-2">
-                            No preview available
-                          </p>
-                          <p className="text-slate-500 text-sm">
-                            Run your animation to see the preview
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </ResizablePanel>
-
-          <ResizableHandle className="w-1 bg-slate-700/30 hover:bg-slate-600/50 transition-colors" />
-
-          {/* AI Chat */}
-          <ResizablePanel defaultSize={35} minSize={25}>
-            <div className="h-full bg-slate-900/30 border-l border-slate-700/50 flex flex-col">
-              <div className="p-4 border-b border-slate-700/50 bg-slate-900/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                    <MessageSquare className="w-4 h-4" />
-                  </div>
-                  <h3 className="font-medium">AI Assistant</h3>
-                  {isGenerating && (
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                  )}
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-auto">
-                {conversation.map((message, index) => (
-                  <ChatMessage
-                    key={index}
-                    message={message}
-                    isUser={message.role === "user"}
-                  />
-                ))}
-                {isGenerating && (
-                  <div className="p-4 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    </div>
-                    <p className="text-slate-300">AI is thinking...</p>
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-slate-500">
+                    <p>Select a scene to edit code</p>
                   </div>
                 )}
-              </div>
+              </TabsContent>
 
-              <AIChatSection
-                conversation={conversation}
-                isGenerating={isGenerating}
-                prompt={prompt}
-                onPromptChange={setPrompt}
-                onSendMessage={handleSendMessageClick}
-                onUseCode={handleUseCode}
-              />
-            </div>
+              <TabsContent value="preview" className="flex-1 m-0 p-0 bg-black flex flex-col items-center justify-center relative">
+                {isExecuting ? (
+                  <div className="text-center space-y-6">
+                    <div className="relative w-24 h-24 mx-auto">
+                      <div className="absolute inset-0 border-4 border-slate-800 rounded-full"></div>
+                      <div className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+                      <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-blue-400 animate-pulse" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-white mb-2">Rendering Animation</h3>
+                      <p className="text-slate-400">Manim is calculating frames...</p>
+                    </div>
+                  </div>
+                ) : videoUrl ? (
+                  <div className="w-full h-full flex flex-col">
+                    <div className="flex-1 relative group">
+                      <video
+                        src={videoUrl}
+                        controls
+                        className="w-full h-full object-contain bg-black"
+                      />
+                    </div>
+                    <div className="h-16 border-t border-slate-800 bg-slate-900 flex items-center justify-between px-6">
+                      <div className="text-sm text-slate-400">
+                        Preview Mode
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="gap-2 border-slate-700 hover:bg-slate-800 text-slate-300"
+                        onClick={handleDownload}
+                      >
+                        <Download className="w-4 h-4" />
+                        Download MP4
+                      </Button>
+                    </div>
+                  </div>
+                ) : error ? (
+                  <div className="max-w-md mx-auto p-6 bg-red-500/10 border border-red-500/20 rounded-xl text-center">
+                    <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Sparkles className="w-6 h-6 text-red-400" />
+                    </div>
+                    <h3 className="text-red-400 font-semibold mb-2">Rendering Failed</h3>
+                    <p className="text-red-300/80 text-sm">{error}</p>
+                  </div>
+                ) : (
+                  <div className="text-center space-y-4 opacity-50">
+                    <Video className="w-20 h-20 mx-auto text-slate-600" />
+                    <p className="text-slate-400">Run the code to generate a preview</p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </ResizablePanel>
+
+          <ResizableHandle className="w-1 bg-slate-800 hover:bg-blue-500/50 transition-colors" />
+
+          {/* Right Sidebar: AI Assistant */}
+          <ResizablePanel defaultSize={30} minSize={20} className="bg-slate-900 border-l border-slate-800">
+            <AIChatSection
+              conversation={conversation}
+              isGenerating={isGenerating}
+              prompt={prompt}
+              onPromptChange={setPrompt}
+              onSendMessage={handleSendMessageClick}
+              onUseCode={handleUseCode}
+            />
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>

@@ -1,15 +1,16 @@
 // components/project/AIChatSection.tsx
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { ArrowUp, Code, Copy } from "lucide-react";
-import React from "react";
-import { Card } from "../ui/card";
+import { ArrowUp, Code, Copy, MessageSquare, Sparkles, User } from "lucide-react";
+import React, { useEffect, useRef } from "react";
 import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { cn } from "@/lib/utils";
+
 interface Message {
   role: string;
   content: string;
-  code?: string; // Added code property
+  code?: string;
 }
 
 interface AIChatSectionProps {
@@ -18,8 +19,100 @@ interface AIChatSectionProps {
   prompt: string;
   onPromptChange: (prompt: string) => void;
   onSendMessage: () => void;
-  onUseCode?: (code: string) => void; // Optional callback to use code
+  onUseCode?: (code: string) => void;
 }
+
+const ChatMessage = ({
+  message,
+  onUseCode,
+}: {
+  message: Message;
+  onUseCode?: (code: string) => void;
+}) => {
+  const isUser = message.role === "user";
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  return (
+    <div className={cn("flex gap-3", isUser ? "flex-row-reverse" : "flex-row")}>
+      <div
+        className={cn(
+          "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg",
+          isUser
+            ? "bg-blue-600 shadow-blue-900/20"
+            : "bg-gradient-to-br from-purple-500 to-pink-500 shadow-purple-900/20"
+        )}
+      >
+        {isUser ? (
+          <User className="w-4 h-4 text-white" />
+        ) : (
+          <MessageSquare className="w-4 h-4 text-white" />
+        )}
+      </div>
+
+      <div className={cn("flex-1 max-w-[85%] space-y-2", isUser ? "items-end" : "items-start")}>
+        <div
+          className={cn(
+            "p-3 rounded-2xl text-sm leading-relaxed shadow-sm",
+            isUser
+              ? "bg-blue-600 text-white rounded-tr-none"
+              : "bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700"
+          )}
+        >
+          <p className="whitespace-pre-wrap">{message.content}</p>
+        </div>
+
+        {message.code && (
+          <div className="rounded-xl overflow-hidden border border-slate-700 bg-slate-950 shadow-md">
+            <div className="flex items-center justify-between px-3 py-2 bg-slate-900 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Code className="w-3 h-3 text-blue-400" />
+                <span className="text-xs font-medium text-slate-400">Python</span>
+              </div>
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-slate-400 hover:text-white"
+                  onClick={() => copyToClipboard(message.code || "")}
+                  title="Copy code"
+                >
+                  <Copy className="w-3 h-3" />
+                </Button>
+                {onUseCode && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs gap-1 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                    onClick={() => onUseCode(message.code || "")}
+                  >
+                    Use
+                  </Button>
+                )}
+              </div>
+            </div>
+            <SyntaxHighlighter
+              language="python"
+              style={oneDark}
+              customStyle={{
+                margin: 0,
+                padding: "1rem",
+                fontSize: "0.8rem",
+                background: "transparent",
+              }}
+              wrapLines={true}
+              wrapLongLines={true}
+            >
+              {message.code}
+            </SyntaxHighlighter>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const AIChatSection = React.memo(function AIChatSection({
   conversation,
@@ -29,6 +122,15 @@ const AIChatSection = React.memo(function AIChatSection({
   onSendMessage,
   onUseCode,
 }: AIChatSectionProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when conversation changes
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [conversation, isGenerating]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && e.shiftKey === false && prompt.trim()) {
       e.preventDefault();
@@ -36,190 +138,87 @@ const AIChatSection = React.memo(function AIChatSection({
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-y-auto p-4">
-        <div className="space-y-4">
-          {conversation.map((message, index) => (
-            <Card
-              key={index}
-              className={`p-4 rounded-lg shadow-sm relative ${
-                message.role === "assistant"
-                  ? `${
-                      isGenerating ? "gradient-border" : ""
-                    } bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200`
-                  : "bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200"
-              }`}
-            >
-              <p className="whitespace-pre-wrap">{message.content}</p>
-
-              {message.code && (
-                <div className="mt-4 p-4 bg-gray-900 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-semibold text-pink-500 dark:text-pink-400 flex items-center bg-pink-100/30 dark:bg-pink-900/20 px-2 py-0.5 rounded-full">
-                      <Code size={12} className="mr-1" />
-                      Python
-                    </span>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(message.code || "")}
-                        className="h-6 px-2 text-xs"
-                      >
-                        <Copy size={12} className="mr-1" /> Copy
-                      </Button>
-                      {onUseCode && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => onUseCode(message.code || "")}
-                          className="h-6 px-2 text-xs"
-                        >
-                          Use Code
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  <SyntaxHighlighter
-                    language="python"
-                    style={oneDark}
-                    className="text-sm font-mono text-gray-100 bg-gray-800 rounded-md p-3 overflow-x-auto max-h-60 border border-gray-700"
-                    customStyle={{
-                      maxHeight: "15rem",
-                      borderRadius: "0.5rem",
-                    }}
-                  >
-                    {message.code}
-                  </SyntaxHighlighter>
-                </div>
-              )}
-            </Card>
-          ))}
-          {/* Generating message bubble */}
-          {isGenerating && (
-            // Add the gradient-border class here
-            <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 relative gradient-border">
-              <div className="flex items-center space-x-2">
-                <span className="text-blue-600 dark:text-blue-400">
-                  Generating response...
-                </span>
-              </div>
+    <div className="flex flex-col h-full bg-slate-900">
+      {/* Messages Area */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent"
+      >
+        {conversation.length === 0 && (
+          <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-4 opacity-50">
+            <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center">
+              <Sparkles className="w-6 h-6" />
             </div>
-          )}
-        </div>
+            <p className="text-sm">Start a conversation to generate animations</p>
+          </div>
+        )}
+
+        {conversation.map((message, index) => (
+          <ChatMessage
+            key={index}
+            message={message}
+            onUseCode={onUseCode}
+          />
+        ))}
+
+        {isGenerating && (
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-900/20 animate-pulse">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-2xl rounded-tl-none p-3 flex items-center gap-2">
+              <div className="flex gap-1">
+                <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+              <span className="text-xs text-slate-400 font-medium">Thinking...</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-        <div className="flex space-x-3 items-end">
-          {/* Wrapper div for Textarea - add the conditional class here */}
-          <div
-            className={`relative flex-1 ${
-              isGenerating ? "gradient-border-textarea-wrapper" : ""
-            }`}
-          >
-            <Textarea
-              placeholder="Describe what animation you want to create..."
-              value={prompt}
-              onChange={(e) => onPromptChange(e.target.value)}
-              // Keep necessary Tailwind classes
-              className="min-h-[80px] resize-none rounded-xl focus:ring-2 focus:ring-blue-400 w-full relative z-[1] bg-gray-50 dark:bg-gray-900"
-              onKeyDown={handleKeyDown}
-            />
-          </div>
+      {/* Input Area */}
+      <div className="p-4 bg-slate-900 border-t border-slate-800">
+        <div className="relative bg-slate-800/50 rounded-xl border border-slate-700 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/50 transition-all">
+          <Textarea
+            placeholder="Describe your animation..."
+            value={prompt}
+            onChange={(e) => onPromptChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="min-h-[50px] max-h-[200px] w-full bg-transparent border-none focus-visible:ring-0 resize-none text-slate-200 placeholder:text-slate-500 py-3 pl-3 pr-12"
+            rows={1}
+            style={{ height: "auto" }}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = "auto";
+              target.style.height = `${target.scrollHeight}px`;
+            }}
+          />
           <Button
+            size="icon"
             onClick={onSendMessage}
             disabled={!prompt.trim() || isGenerating}
-            className="self-end h-10 w-10 rounded-full p-0 transition-colors"
+            className={cn(
+              "absolute right-2 bottom-2 h-8 w-8 rounded-lg transition-all",
+              prompt.trim() && !isGenerating
+                ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20"
+                : "bg-slate-700 text-slate-500"
+            )}
           >
-            <ArrowUp className="h-5 w-5" />
+            <ArrowUp className="w-4 h-4" />
           </Button>
         </div>
+        <div className="mt-2 flex items-center justify-center gap-2 text-[10px] text-slate-500">
+          <span className="flex items-center gap-1">
+            <Code className="w-3 h-3" />
+            Manim Python
+          </span>
+          <span>•</span>
+          <span>Shift + Enter for new line</span>
+        </div>
       </div>
-
-      {/* === Consolidated styled-jsx block === */}
-      <style jsx>{`
-        /* Animation for the message bubble border */
-        @keyframes gradientMove {
-          0% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-          100% {
-            background-position: 0% 50%;
-          }
-        }
-        /* Style for the generating message bubble border */
-        .gradient-border::before {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          border-radius: 0.5rem; /* Matches rounded-lg */
-          padding: 1px; /* Border thickness */
-          background: linear-gradient(
-            90deg,
-            #3b82f6,
-            /* blue-500 */ #8b5cf6,
-            /* violet-500 */ #ec4899,
-            /* pink-500 */ #3b82f6
-          );
-          background-size: 300% 300%;
-          animation: gradientMove 2s ease infinite;
-          -webkit-mask: linear-gradient(#fff 0 0) content-box,
-            linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          pointer-events: none;
-        }
-
-        /* Animation for the textarea border */
-        @keyframes gradientMoveTextarea {
-          0% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-          100% {
-            background-position: 0% 50%;
-          }
-        }
-        /* Style for the Textarea border when generating */
-        .gradient-border-textarea-wrapper::before {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          border-radius: 0.75rem; /* Matches rounded-xl */
-          padding: 1.5px; /* Border thickness */
-          background: linear-gradient(
-            90deg,
-            #3b82f6,
-            /* blue-500 */ #8b5cf6,
-            /* violet-500 */ #ec4899,
-            /* pink-500 */ #3b82f6
-          );
-          background-size: 300% 300%;
-          animation: gradientMoveTextarea 4s ease infinite; /* Slightly longer animation for a calmer effect */
-          -webkit-mask: linear-gradient(#fff 0 0) content-box,
-            linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          pointer-events: none; /* Ensure clicks/interactions pass through */
-        }
-      `}</style>
     </div>
   );
 });

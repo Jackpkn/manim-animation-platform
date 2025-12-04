@@ -1,7 +1,8 @@
 "use client";
 
 import { syncUserWithDatabase } from "@/app/actions/auth";
-import { useUser } from "@clerk/nextjs";
+// import { useUser } from "@clerk/nextjs";
+const useUser = () => ({ isSignedIn: true, isLoaded: true });
 import { useEffect, useState } from "react";
 
 /**

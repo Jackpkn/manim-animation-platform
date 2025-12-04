@@ -6,7 +6,7 @@ import type {
 } from "./gemini";
 
 // File type interface (updated)
-interface FileType {
+export interface FileType {
   id: string;
   name: string;
   type: "file" | "folder";
@@ -132,7 +132,6 @@ export function useProject(params: Promise<{ id: string }>): UseProjectReturn {
   const projectId = resolvedParams.id;
 
   const findFileById = useCallback(
-    // ... (implementation remains the same)
     (id: string, items: FileType[]): FileType | null => {
       for (const item of items) {
         if (item.id === id) return item; // Can be file or folder
@@ -147,40 +146,123 @@ export function useProject(params: Promise<{ id: string }>): UseProjectReturn {
   );
 
   const [fileSystem, setFileSystem] = useState<FileType[]>(() => {
-    // ... (localStorage loading logic for fileSystem)
     if (typeof window !== "undefined") {
-      /* ... */
+      const saved = localStorage.getItem(STORAGE_KEY(projectId));
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.fileSystem) return data.fileSystem;
+        } catch (e) {
+          console.error("Failed to parse saved file system", e);
+        }
+      }
     }
     return initialFileSystem;
   });
   const [openFiles, setOpenFiles] = useState<FileType[]>(() => {
-    // ... (localStorage loading logic for openFiles)
     if (typeof window !== "undefined") {
-      /* ... */
+      const saved = localStorage.getItem(STORAGE_KEY(projectId));
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.openFileIds && data.fileSystem) {
+            // Reconstruct open files from IDs
+            const openIds = new Set(data.openFileIds);
+            const foundFiles: FileType[] = [];
+            const traverse = (items: FileType[]) => {
+              for (const item of items) {
+                if (openIds.has(item.id)) foundFiles.push(item);
+                if (item.children) traverse(item.children);
+              }
+            };
+            traverse(data.fileSystem);
+            return foundFiles;
+          }
+        } catch (e) {
+          console.error("Failed to parse saved open files", e);
+        }
+      }
     }
     return [];
   });
   const [selectedFile, setSelectedFile] = useState<FileType | null>(() => {
-    // ... (localStorage loading logic for selectedFile)
     if (typeof window !== "undefined") {
-      /* ... */
+      const saved = localStorage.getItem(STORAGE_KEY(projectId));
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.selectedFileId && data.fileSystem) {
+            // Reconstruct selected file from ID
+            let foundFile: FileType | null = null;
+            const traverse = (items: FileType[]) => {
+              for (const item of items) {
+                if (item.id === data.selectedFileId) {
+                  foundFile = item;
+                  return;
+                }
+                if (item.children) traverse(item.children);
+              }
+            };
+            traverse(data.fileSystem);
+            return foundFile;
+          }
+        } catch (e) {
+          console.error("Failed to parse saved selected file", e);
+        }
+      }
     }
     return null;
   });
 
   const [selectedScenes, setSelectedScenes] = useState<string[]>(() => {
-    /* ... */ return [];
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_KEY(projectId));
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          return data.selectedScenes || [];
+        } catch { }
+      }
+    }
+    return [];
   });
   const [combineScenes, setCombineScenes] = useState<boolean>(() => {
-    /* ... */ return false;
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_KEY(projectId));
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          return data.combineScenes || false;
+        } catch { }
+      }
+    }
+    return false;
   });
   const [videoUrl, setVideoUrl] = useState<string | null>(() => {
-    /* ... */ return null;
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_KEY(projectId));
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          return data.videoUrl || null;
+        } catch { }
+      }
+    }
+    return null;
   });
   const [isExecuting, setIsExecuting] = useState(false);
   const [error, setError] = useState<string>();
   const [activeTab, setActiveTab] = useState(() => {
-    /* ... */ return "code";
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_KEY(projectId));
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          return data.activeTab || "code";
+        } catch { }
+      }
+    }
+    return "code";
   });
   const [prompt, setPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -193,12 +275,14 @@ export function useProject(params: Promise<{ id: string }>): UseProjectReturn {
         try {
           const data = JSON.parse(saved);
           return (
-            data.conversation ||
-            [
-              /* initial message */
+            data.conversation || [
+              {
+                role: "assistant",
+                content: "Hello! How can I help you create a Manim animation today?",
+              },
             ]
           );
-        } catch (e) {
+        } catch {
           /* ... */
         }
       }
@@ -210,6 +294,124 @@ export function useProject(params: Promise<{ id: string }>): UseProjectReturn {
       },
     ];
   });
+
+  const updateFileDetails = useCallback(
+    (fileId: string, updateFn: (file: FileType) => FileType) => {
+      const recursiveUpdate = (items: FileType[]): FileType[] => {
+        return items.map((item) => {
+          if (item.id === fileId) return updateFn(item);
+          if (item.children)
+            return { ...item, children: recursiveUpdate(item.children) };
+          return item;
+        });
+      };
+      setFileSystem((prev) => recursiveUpdate(prev));
+      setSelectedFile((prev) => (prev?.id === fileId ? updateFn(prev) : prev));
+      setOpenFiles((prev) =>
+        prev.map((f) => (f.id === fileId ? updateFn(f) : f))
+      );
+    },
+    []
+  );
+
+  const handleSendMessage = useCallback(
+    async (inputPrompt?: string): Promise<void> => {
+      const actualPrompt = inputPrompt?.trim() || prompt.trim();
+      if (!actualPrompt) return;
+
+      const newUserMessage = { role: "user", content: actualPrompt };
+      setConversation((prevConv) => [...prevConv, newUserMessage]);
+      if (!inputPrompt) setPrompt("");
+      setIsGenerating(true);
+      setError(undefined);
+
+      try {
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: actualPrompt }),
+        });
+
+        const data: GenerateManimProjectResponse = await response.json();
+
+        if (!response.ok) {
+          setError(
+            data.explanation || `HTTP error! status: ${response.status}`
+          );
+          setConversation((prevConv) => [
+            ...prevConv,
+            {
+              role: "assistant",
+              content: `Sorry, error: ${data.explanation || response.statusText}`,
+            },
+          ]);
+          return;
+        }
+
+        const assistantMessage: UseProjectReturn["conversation"][0] = {
+          role: "assistant",
+          content: data.explanation,
+        };
+        if (data.project) {
+          assistantMessage.project = data.project;
+        }
+        setConversation((prevConv) => [...prevConv, assistantMessage]);
+
+        if (data.project && data.project.scenes.length > 0) {
+          const newFileItems: FileType[] = data.project.scenes.map(
+            (scene: AiScene) => ({
+              id: scene.id,
+              name: scene.name,
+              type: "file",
+              content: scene.content,
+              sceneClass: scene.sceneClass,
+              description: scene.description,
+              dependencies: scene.dependencies,
+              duration: scene.duration,
+              tags: scene.tags,
+              isOpen: false,
+            })
+          );
+
+          setFileSystem((prevFileSystem) =>
+            updateFilesInFolder(prevFileSystem, SCENES_FOLDER_ID, newFileItems)
+          );
+
+          setOpenFiles((prevOpenFiles) => {
+            const existingOpenIds = new Set(prevOpenFiles.map((f) => f.id));
+            const filesToOpen = newFileItems.filter(
+              (nf) => !existingOpenIds.has(nf.id)
+            );
+            return [...prevOpenFiles, ...filesToOpen];
+          });
+          setSelectedFile(newFileItems[0]);
+
+          if (data.project.combinedOutput.shouldCombine) {
+            setSelectedScenes(data.project.scenes.map((s) => s.id));
+            setCombineScenes(true);
+          } else {
+            setSelectedScenes([newFileItems[0].id]);
+            setCombineScenes(false);
+          }
+        }
+      } catch (e: unknown) {
+        const errorMessage =
+          e instanceof Error ? e.message : "Unknown error occurred";
+        console.error("Error processing AI response:", e);
+        setConversation((prevConv) => [
+          ...prevConv,
+          {
+            role: "assistant",
+            content: `Sorry, an error occurred while processing the response: ${errorMessage}`,
+          },
+        ]);
+        setError(`Processing failed: ${errorMessage}`);
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [prompt]
+  );
 
   useEffect(() => {
     // Initialize with first file from "scenes" folder if available and none selected
@@ -232,6 +434,25 @@ export function useProject(params: Promise<{ id: string }>): UseProjectReturn {
       }
     }
   }, [fileSystem, selectedFile, openFiles, findFileById]);
+
+  // Handle initial prompt from URL
+  const initialPromptProcessed = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined" && !initialPromptProcessed[0]) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const initialPrompt = searchParams.get("initialPrompt");
+
+      if (initialPrompt && conversation.length <= 1) {
+        console.log("Processing initial prompt:", initialPrompt);
+        initialPromptProcessed[1](true);
+        handleSendMessage(initialPrompt);
+
+        // Clean up URL
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, "", newUrl);
+      }
+    }
+  }, [handleSendMessage, conversation.length, initialPromptProcessed]);
 
   useEffect(() => {
     // Save state to localStorage
@@ -259,27 +480,6 @@ export function useProject(params: Promise<{ id: string }>): UseProjectReturn {
     combineScenes,
     projectId,
   ]);
-
-  const updateFileDetails = useCallback(
-    (fileId: string, updateFn: (file: FileType) => FileType) => {
-      // ... (updateFileInSystemRecursively remains useful for single file updates)
-      // This helper needs to be defined as in your previous version or adapted.
-      const recursiveUpdate = (items: FileType[]): FileType[] => {
-        return items.map((item) => {
-          if (item.id === fileId) return updateFn(item);
-          if (item.children)
-            return { ...item, children: recursiveUpdate(item.children) };
-          return item;
-        });
-      };
-      setFileSystem((prev) => recursiveUpdate(prev));
-      setSelectedFile((prev) => (prev?.id === fileId ? updateFn(prev) : prev));
-      setOpenFiles((prev) =>
-        prev.map((f) => (f.id === fileId ? updateFn(f) : f))
-      );
-    },
-    []
-  );
 
   const handleFileSelect = useCallback(
     (file: FileType) => {
@@ -332,130 +532,88 @@ export function useProject(params: Promise<{ id: string }>): UseProjectReturn {
   );
 
   const handleRunAnimation = useCallback(async () => {
-    /* ... same as before, uses selectedFile/selectedScenes */
-  }, [selectedFile, selectedScenes]);
-  const handleSaveCode = async () => {
-    /* ... */
-  };
-  const handleDownload = useCallback(() => {
-    /* ... */
-  }, []);
+    if (isExecuting) return;
 
-  const handleSendMessage = useCallback(
-    async (inputPrompt?: string): Promise<void> => {
-      const actualPrompt = inputPrompt?.trim() || prompt.trim();
-      if (!actualPrompt) return;
+    // Determine which scenes to run
+    let scenesToRun: { name: string; content: string }[] = [];
 
-      const newUserMessage = { role: "user", content: actualPrompt };
-      setConversation((prevConv) => [...prevConv, newUserMessage]);
-      if (!inputPrompt) setPrompt("");
-      setIsGenerating(true);
-      setError(undefined);
+    if (selectedScenes.length > 0) {
+      // Run selected scenes
+      scenesToRun = fileSystem
+        .flatMap((item) => (item.children ? item.children : [item])) // Flatten one level (scenes folder)
+        .filter((file) => selectedScenes.includes(file.id) && file.content)
+        .map((file) => ({
+          name: file.name,
+          content: file.content!,
+        }));
+    } else if (selectedFile && selectedFile.content) {
+      // Run currently selected file
+      scenesToRun = [
+        {
+          name: selectedFile.name,
+          content: selectedFile.content,
+        },
+      ];
+    }
 
-      try {
-        const response = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: actualPrompt }), // currentCode not sent for project generation
-        });
+    if (scenesToRun.length === 0) {
+      setError("No scenes selected to run.");
+      return;
+    }
 
-        // The backend now returns GenerateManimProjectResponse
-        const data: GenerateManimProjectResponse = await response.json();
+    setIsExecuting(true);
+    setError(undefined);
+    setVideoUrl(null);
 
-        if (!response.ok) {
-          setError(
-            data.explanation || `HTTP error! status: ${response.status}`
-          );
-          setConversation((prevConv) => [
-            ...prevConv,
-            {
-              role: "assistant",
-              content: `Sorry, error: ${
-                data.explanation || response.statusText
-              }`,
-            },
-          ]);
-          return;
-        }
+    try {
+      const response = await fetch("/api/execute", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          scenes: scenesToRun,
+          combineVideos: combineScenes,
+        }),
+      });
 
-        // Add AI's explanation to conversation
-        const assistantMessage: UseProjectReturn["conversation"][0] = {
-          role: "assistant",
-          content: data.explanation,
-        };
-        if (data.project) {
-          assistantMessage.project = data.project;
-        }
-        setConversation((prevConv) => [...prevConv, assistantMessage]);
+      const data = await response.json();
 
-        if (data.project && data.project.scenes.length > 0) {
-          const newFileItems: FileType[] = data.project.scenes.map(
-            (scene: AiScene) => ({
-              id: scene.id,
-              name: scene.name,
-              type: "file",
-              content: scene.content,
-              sceneClass: scene.sceneClass,
-              description: scene.description,
-              dependencies: scene.dependencies,
-              duration: scene.duration,
-              tags: scene.tags,
-              isOpen: false,
-            })
-          );
-
-          setFileSystem((prevFileSystem) =>
-            updateFilesInFolder(prevFileSystem, SCENES_FOLDER_ID, newFileItems)
-          );
-
-          // Open all new files and select the first one
-          setOpenFiles((prevOpenFiles) => {
-            const existingOpenIds = new Set(prevOpenFiles.map((f) => f.id));
-            const filesToOpen = newFileItems.filter(
-              (nf) => !existingOpenIds.has(nf.id)
-            );
-            return [...prevOpenFiles, ...filesToOpen];
-          });
-          setSelectedFile(newFileItems[0]); // Select the first generated file
-
-          // Handle combined output
-          if (data.project.combinedOutput.shouldCombine) {
-            setSelectedScenes(data.project.scenes.map((s) => s.id));
-            setCombineScenes(true);
-          } else {
-            // Optionally clear selected scenes or set to just the first one
-            setSelectedScenes([newFileItems[0].id]);
-            setCombineScenes(false);
-          }
-
-          // Log assets for now
-          if (data.project.assets.length > 0) {
-            console.log("AI suggested assets:", data.project.assets);
-            // You could add another message to conversation about assets
-          }
-        } else if (data.project && data.project.scenes.length === 0) {
-          // AI provided a project structure but no scenes
-          console.warn("AI returned a project structure with no scenes.");
-        }
-        // If no project, the explanation is already added to conversation.
-      } catch (e: unknown) {
-        const errorMessage =
-          e instanceof Error ? e.message : "Unknown error occurred";
-        console.error("Error processing AI response:", e);
-        setConversation((prevConv) => [
-          ...prevConv,
-          {
-            role: "assistant",
-            content: `Sorry, an error occurred while processing the response: ${errorMessage}`,
-          },
-        ]);
-        setError(`Processing failed: ${errorMessage}`);
-      } finally {
-        setIsGenerating(false);
+      if (!response.ok) {
+        throw new Error(data.details || data.error || "Execution failed");
       }
-    },
-    [prompt, conversation /* projectId is implicitly handled by STORAGE_KEY */]
-  );
+
+      if (data.success) {
+        setVideoUrl(data.videoUrl);
+        // You could also store individual scene URLs if needed
+      } else {
+        throw new Error(data.error || "Unknown execution error");
+      }
+    } catch (err: unknown) {
+      console.error("Animation execution error:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to run animation"
+      );
+    } finally {
+      setIsExecuting(false);
+    }
+  }, [isExecuting, selectedScenes, selectedFile, fileSystem, combineScenes]);
+
+  const handleSaveCode = async () => {
+    // Placeholder for save functionality
+    console.log("Saving code...");
+  };
+
+  const handleDownload = useCallback(() => {
+    if (videoUrl) {
+      const a = document.createElement("a");
+      a.href = videoUrl;
+      a.download = "animation.mp4";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  }, [videoUrl]);
 
   const handleMultiSceneRun = useCallback(async () => {
     await handleRunAnimation();

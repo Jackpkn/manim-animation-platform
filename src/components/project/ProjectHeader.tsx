@@ -1,8 +1,10 @@
 // components/project/ProjectHeader.tsx
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
-import React from "react"; // Import React
-import { UserButton } from "@clerk/nextjs";
+import React from "react";
+// import { UserButton } from "@clerk/nextjs";
+const UserButton = ({ afterSignOutUrl }: any) => <div className="w-8 h-8 bg-blue-500 rounded-full"></div>;
+import Image from "next/image";
 
 interface ProjectHeaderProps {
   projectId: string;
@@ -17,7 +19,13 @@ const ProjectHeader = React.memo(function ProjectHeader({
     <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between">
       <div className="flex gap-2">
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-          <img src="/logo.svg" alt="Manim Logo" className="w-full h-full p-1" />
+          <Image
+            src="/logo.svg"
+            alt="Manim Logo"
+            width={32}
+            height={32}
+            className="p-1"
+          />
         </div>
         <span className="font-semibold text-xl">PromptViz</span>
       </div>

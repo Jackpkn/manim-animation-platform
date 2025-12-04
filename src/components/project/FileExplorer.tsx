@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 // File system types
 export type FileType = {
@@ -41,7 +42,7 @@ interface FileExplorerProps {
 }
 
 const PythonFileIcon = () => (
-  <img src="/python.svg" alt="python icon" className="w-4 h-4" />
+  <Image src="/python.svg" alt="python icon" width={16} height={16} className="w-4 h-4" />
 );
 
 export default function FileExplorer({
@@ -87,22 +88,6 @@ export default function FileExplorer({
 
     setFilteredFileSystem(filterItems(fileSystem));
   }, [searchQuery, fileSystem]);
-
-  // Find file by ID in the file system
-  const findFileById = (
-    id: string,
-    items: FileSystemItem[]
-  ): FileType | null => {
-    for (const item of items) {
-      if (item.type === "file" && item.id === id) {
-        return item;
-      } else if (isFolder(item)) {
-        const foundInFolder = findFileById(id, item.children);
-        if (foundInFolder) return foundInFolder;
-      }
-    }
-    return null;
-  };
 
   // Toggle folder open/closed state
   const toggleFolder = (folderId: string) => {
@@ -190,9 +175,8 @@ export default function FileExplorer({
     return (
       <div>
         <div
-          className={`flex items-center px-2 py-1 hover:bg-gray-700 rounded cursor-pointer ${
-            isSelected ? "bg-blue-950 hover:bg-blue-700" : ""
-          }`}
+          className={`flex items-center px-2 py-1 hover:bg-gray-700 rounded cursor-pointer ${isSelected ? "bg-blue-950 hover:bg-blue-700" : ""
+            }`}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
           onClick={() => !isFolder(item) && onFileSelect(item)}
         >
@@ -295,7 +279,7 @@ export default function FileExplorer({
           ))
         ) : (
           <div className="p-4 text-center text-gray-500">
-            No files found matching "{searchQuery}"
+            No files found matching &quot;{searchQuery}&quot;
           </div>
         )}
       </div>

@@ -1,12 +1,7 @@
-// lib/docker.ts - Improved Docker execution with multi-scene support
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { exec } from "child_process";
-import { promisify } from "util";
-
-const execAsync = promisify(exec);
 
 // Constants
 const TEMP_DIR = path.join(process.cwd(), "tmp");
@@ -151,12 +146,22 @@ export async function compileSingleScene(
     // Run Docker container
     console.log(`Compiling scene: ${className}`);
     const dockerCmd = `docker run --rm \
+      --user "${process.getuid()}:${process.getgid()}" \
+      -e HOME=/tmp \
       -v "${TEMP_DIR}:/app/input" \
       -v "${tempOutputDir}:/app/output" \
       ${DOCKER_IMAGE} \
-      python -m manim /app/input/${id}.py ${className} -q m --output_file ${className}`;
+      python -m manim /app/input/${id}.py ${className} -q m --media_dir /app/output --output_file ${className}`;
 
-    execSync(dockerCmd, { stdio: "pipe" });
+    try {
+      console.log("Executing Docker command:", dockerCmd);
+      execSync(dockerCmd, { stdio: "pipe" });
+    } catch (e: any) {
+      console.error("Docker execution failed.");
+      if (e.stdout) console.log("Docker stdout:", e.stdout.toString());
+      if (e.stderr) console.error("Docker stderr:", e.stderr.toString());
+      throw new Error(`Manim compilation failed: ${e.stderr ? e.stderr.toString() : e.message}`);
+    }
 
     // Find the generated video
     const videoPath = findGeneratedVideo(tempOutputDir, className, id);

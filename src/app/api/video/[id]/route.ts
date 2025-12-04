@@ -4,11 +4,12 @@ import { join } from 'path';
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         // The id parameter is the scene name
-        const sceneName = params.id;
+        const sceneName = id;
 
         // Construct the video path - Manim outputs to media/videos/[scene_name]/720p30/output.mp4
         const videoPath = join(

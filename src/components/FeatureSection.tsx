@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 const FeatureSection = () => {
   return (
@@ -20,7 +21,7 @@ const FeatureSection = () => {
               description:
                 "Transform natural language descriptions into complex mathematical animations with our advanced AI engine.",
               icon: (
-                <img src="/ai.svg" alt="AI Assistant" className="w-6 h-6" />
+                <Image src="/ai.svg" alt="AI Assistant" width={24} height={24} className="w-6 h-6" />
               ),
             },
             {
@@ -28,9 +29,11 @@ const FeatureSection = () => {
               description:
                 "See your animations render in real-time as you make changes, with no delays or waiting for compilation.",
               icon: (
-                <img
+                <Image
                   src="/realtime-preview.svg"
                   alt="reltime preview"
+                  width={24}
+                  height={24}
                   className="w-6 h-6"
                 />
               ),
@@ -40,9 +43,11 @@ const FeatureSection = () => {
               description:
                 "Fine-tune your animations with our powerful code editor that updates in real-time as you make changes.",
               icon: (
-                <img
+                <Image
                   src="/code-editor.svg"
                   alt="code editor"
+                  width={24}
+                  height={24}
                   className="w-6 h-6"
                 />
               ),

@@ -11,8 +11,8 @@ interface AnimationPromptInputProps {
 const useUser = () => ({ isSignedIn: true });
 const useSignIn = () => ({
   signIn: {
-    create: async (p0: { strategy: string; redirectUrl: string }) => {
-      console.log("Mock sign in");
+    create: async (...args: unknown[]) => {
+      console.log("Mock sign in", args);
     },
   },
   isLoaded: true,
@@ -77,7 +77,7 @@ const AnimationPromptInput: React.FC<AnimationPromptInputProps> = ({
 
     setIsEnhancing(true);
     try {
-      const result: any = await enhancePromptAction(prompt); // Cast to any to bypass type errors for mock
+      const result: { success: boolean; enhancedPrompt?: string; error?: string } = await enhancePromptAction(prompt); // Cast to any to bypass type errors for mock
       if (result.success && result.enhancedPrompt) {
         setPrompt(result.enhancedPrompt);
       } else {
@@ -160,11 +160,10 @@ const AnimationPromptInput: React.FC<AnimationPromptInputProps> = ({
             disabled={
               isLoading || isEnhancing || !prompt.trim() || signInCooldown
             }
-            className={`px-6 py-3 rounded-lg font-medium flex items-center justify-center gap-2 text-base ${
-              isLoading || isEnhancing || !prompt.trim() || signInCooldown
-                ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-                : "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md hover:from-blue-700 hover:to-purple-700"
-            } transition-all duration-300`}
+            className={`px-6 py-3 rounded-lg font-medium flex items-center justify-center gap-2 text-base ${isLoading || isEnhancing || !prompt.trim() || signInCooldown
+              ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+              : "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md hover:from-blue-700 hover:to-purple-700"
+              } transition-all duration-300`}
           >
             {isLoading ? (
               <>
@@ -196,8 +195,8 @@ const AnimationPromptInput: React.FC<AnimationPromptInputProps> = ({
                   {isSignedIn
                     ? "Create Animation"
                     : signInCooldown
-                    ? "Please wait..."
-                    : "Sign in to Create"}
+                      ? "Please wait..."
+                      : "Sign in to Create"}
                 </span>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

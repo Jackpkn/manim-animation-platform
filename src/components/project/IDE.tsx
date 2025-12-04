@@ -3,8 +3,6 @@ import { Button } from "@/components/ui/button";
 import { PlayCircle, Film, Combine, ChevronDown } from "lucide-react";
 import CodeEditorSection from "./CodeEditorSection";
 import FileExplorer, { FileType, FileSystemItem } from "./FileExplorer";
-import { Label } from "@radix-ui/react-label";
-import { Switch } from "@radix-ui/react-switch";
 
 interface SceneInfo {
   fileName: string;
@@ -19,6 +17,54 @@ interface IDEProps {
   isExecuting: boolean;
   onMultiSceneRun: (scenes: SceneInfo[], combineVideos: boolean) => void;
 }
+
+// Helper functions moved outside component
+const findFileById = (
+  id: string,
+  items: FileSystemItem[]
+): FileType | null => {
+  for (const item of items) {
+    if (item.type === "file" && item.id === id) {
+      return item;
+    } else if (item.type === "folder") {
+      const foundInFolder = findFileById(id, item.children);
+      if (foundInFolder) return foundInFolder;
+    }
+  }
+  return null;
+};
+
+const getAllFiles = (items: FileSystemItem[]): FileType[] => {
+  const files: FileType[] = [];
+  for (const item of items) {
+    if (item.type === "file") {
+      files.push(item);
+    } else if (item.type === "folder") {
+      files.push(...getAllFiles(item.children));
+    }
+  }
+  return files;
+};
+
+const extractSceneClasses = (content: string): string[] => {
+  const patterns = [
+    /class\s+([a-zA-Z0-9_]+)\s*\(\s*Scene\s*\)/g,
+    /class\s+([a-zA-Z0-9_]+)\s*\(\s*MovingCameraScene\s*\)/g,
+    /class\s+([a-zA-Z0-9_]+)\s*\(\s*ThreeDScene\s*\)/g,
+    /class\s+([a-zA-Z0-9_]+)\s*\(\s*ZoomedScene\s*\)/g,
+  ];
+
+  const classes = new Set<string>();
+
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(content)) !== null) {
+      classes.add(match[1]);
+    }
+  }
+
+  return Array.from(classes);
+};
 
 export default function ImprovedIDE({
   code,
@@ -100,56 +146,6 @@ class TriangleScene(Scene):
   const [showSceneList, setShowSceneList] = useState(false);
   const [localCode, setLocalCode] = useState<string>("");
 
-  // Find file by ID in the file system
-  const findFileById = (
-    id: string,
-    items: FileSystemItem[]
-  ): FileType | null => {
-    for (const item of items) {
-      if (item.type === "file" && item.id === id) {
-        return item;
-      } else if (item.type === "folder") {
-        const foundInFolder = findFileById(id, item.children);
-        if (foundInFolder) return foundInFolder;
-      }
-    }
-    return null;
-  };
-
-  // Get all files from the file system
-  const getAllFiles = (items: FileSystemItem[]): FileType[] => {
-    const files: FileType[] = [];
-    for (const item of items) {
-      if (item.type === "file") {
-        files.push(item);
-      } else if (item.type === "folder") {
-        files.push(...getAllFiles(item.children));
-      }
-    }
-    return files;
-  };
-
-  // Extract scene classes from code
-  const extractSceneClasses = (content: string): string[] => {
-    const patterns = [
-      /class\s+([a-zA-Z0-9_]+)\s*\(\s*Scene\s*\)/g,
-      /class\s+([a-zA-Z0-9_]+)\s*\(\s*MovingCameraScene\s*\)/g,
-      /class\s+([a-zA-Z0-9_]+)\s*\(\s*ThreeDScene\s*\)/g,
-      /class\s+([a-zA-Z0-9_]+)\s*\(\s*ZoomedScene\s*\)/g,
-    ];
-
-    const classes = new Set<string>();
-
-    for (const pattern of patterns) {
-      let match;
-      while ((match = pattern.exec(content)) !== null) {
-        classes.add(match[1]);
-      }
-    }
-
-    return Array.from(classes);
-  };
-
   // Detect all scenes in the project
   useEffect(() => {
     const allFiles = getAllFiles(fileSystem);
@@ -186,7 +182,7 @@ class TriangleScene(Scene):
       setSelectedFile(mainFile);
       setLocalCode(mainFile.content);
     }
-  }, [fileSystem]);
+  }, [fileSystem, openFiles]);
 
   // Update file content in the file system
   const updateFileContent = (
@@ -356,9 +352,8 @@ class ${className}(Scene):
               onClick={() => setShowSceneList(!showSceneList)}
             >
               <ChevronDown
-                className={`h-5 w-5 transition-transform ${
-                  showSceneList ? "rotate-180" : ""
-                }`}
+                className={`h-5 w-5 transition-transform ${showSceneList ? "rotate-180" : ""
+                  }`}
               />
             </div>
           </div>

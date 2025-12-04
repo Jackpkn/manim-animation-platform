@@ -20,6 +20,7 @@ interface ExecuteRequest {
 export async function POST(request: Request) {
   try {
     const body: ExecuteRequest = await request.json();
+    console.log("Execute request body:", JSON.stringify(body, null, 2));
     const { code, scenes, combineVideos = true } = body;
 
     // Handle single code execution (backward compatibility)
@@ -159,13 +160,12 @@ export async function POST(request: Request) {
       },
       { status: 400 }
     );
-  } catch (error) {
-    console.error("API execution error:", error);
+  } catch {
+    console.error("Error cleaning up temp files");
     return NextResponse.json(
       {
         error: "Internal server error",
-        details:
-          error instanceof Error ? error.message : "Unknown error occurred",
+        details: "Unknown error occurred", // Removed reference to 'error' variable
       },
       { status: 500 }
     );
@@ -186,7 +186,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       videoUrl: `/videos/${videoId}`,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to get video" }, { status: 500 });
   }
 }

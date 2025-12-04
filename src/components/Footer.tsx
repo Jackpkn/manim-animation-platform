@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 const Footer = () => {
   return (
     <footer className="py-12 px-4 border-t border-white/10">
@@ -5,7 +7,7 @@ const Footer = () => {
         <div className="mb-8 md:mb-0">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-              <img src="/logo.svg" alt="logo" />
+              <Image src="/logo.svg" alt="logo" width={32} height={32} />
             </div>
             <span className="font-semibold text-xl">PromptViz</span>
           </div>
